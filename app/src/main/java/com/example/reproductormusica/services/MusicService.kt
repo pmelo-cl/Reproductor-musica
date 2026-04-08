@@ -7,7 +7,6 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.net.Uri
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
@@ -16,15 +15,21 @@ import androidx.core.app.ServiceCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import com.example.reproductormusica.R
 import com.example.reproductormusica.models.Song
 import com.example.reproductormusica.ui.MainActivity
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import com.example.reproductormusica.R
 
 class MusicService : Service() {
     private val binder = LocalBinder()
     private lateinit var player: ExoPlayer
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    private var queue: List<Song> = emptyList()
+    private var currentIndex: Int = -1
     private var currentSong: Song? = null
 
     var onPlaybackStateChanged: ((Boolean) -> Unit)? = null
@@ -43,9 +48,10 @@ class MusicService : Service() {
                 updateNotification()
             }
 
-            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                mediaItem?.let {
-                    // Actualiza currentSong según mediaId si es necesario
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                // Auto-avanzar al siguiente cuando termina la canción
+                if (playbackState == Player.STATE_ENDED) {
+                    playNext()
                 }
             }
         })
@@ -60,14 +66,29 @@ class MusicService : Service() {
                 ACTION_PAUSE -> player.pause()
                 ACTION_NEXT -> playNext()
                 ACTION_PREVIOUS -> playPrevious()
-                ACTION_STOP -> stopSelf()
+                ACTION_STOP -> {
+                    stop()
+                    stopSelf()
+                }
             }
         }
         return START_STICKY
     }
 
-    fun playSong(song: Song) {
+    // Actualizar la cola (llamado desde ViewModel cuando cambia la lista)
+    fun setQueue(songs: List<Song>) {
+        queue = songs
+        // Reajustar índice si la canción actual sigue en la lista
+        currentSong?.let { song ->
+            currentIndex = queue.indexOfFirst { it.id == song.id }
+        }
+    }
+
+    fun playSong(song: Song, songList: List<Song> = queue) {
+        queue = songList
+        currentIndex = queue.indexOfFirst { it.id == song.id }
         currentSong = song
+
         val mediaItem = MediaItem.Builder()
             .setUri(song.uri)
             .setMediaId(song.id.toString())
@@ -84,22 +105,46 @@ class MusicService : Service() {
     }
 
     fun playNext() {
-        player.seekToNextMediaItem()
+        if (queue.isEmpty()) return
+        val nextIndex = (currentIndex + 1) % queue.size
+        playSong(queue[nextIndex])
     }
 
     fun playPrevious() {
-        player.seekToPreviousMediaItem()
+        if (queue.isEmpty()) return
+        // Si llevamos más de 3 segundos, reinicia la canción actual
+        if (player.currentPosition > 3000L) {
+            player.seekTo(0)
+            return
+        }
+        val prevIndex = if (currentIndex - 1 < 0) queue.size - 1 else currentIndex - 1
+        playSong(queue[prevIndex])
     }
 
     fun seekTo(positionMs: Long) {
         player.seekTo(positionMs)
     }
 
-    fun getCurrentPosition(): Long = player.currentPosition
-    fun getDuration(): Long = player.duration
-    fun isPlaying(): Boolean = player.isPlaying
+    fun stop() {
+        player.stop()
+        currentSong = null
+        currentIndex = -1
+        onPlaybackStateChanged?.invoke(false)
+        onSongChanged?.invoke(Song(title = "", uriString = ""))  // señal de "sin canción"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION")
+            stopForeground(true)
+        }
+    }
+
+    fun getCurrentPosition(): Long = if (::player.isInitialized) player.currentPosition else 0L
+    fun getDuration(): Long = if (::player.isInitialized) player.duration else 0L
+    fun isPlaying(): Boolean = if (::player.isInitialized) player.isPlaying else false
 
     private fun startForegroundServiceWithNotification() {
+        createNotificationChannel()
         val notification = createNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ServiceCompat.startForeground(
@@ -114,38 +159,43 @@ class MusicService : Service() {
     }
 
     private fun updateNotification() {
+        if (currentSong == null) return
         val notification = createNotification()
         val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         manager.notify(NOTIFICATION_ID, notification)
     }
 
-    private fun createNotification(): Notification {
-        val channelId = "music_playback_channel"
+    private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                channelId,
+                CHANNEL_ID,
                 "Reproducción de música",
                 NotificationManager.IMPORTANCE_LOW
             )
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
         }
+    }
 
-        val playPauseIcon = if (player.isPlaying)
-            android.R.drawable.ic_media_pause
-        else
-            android.R.drawable.ic_media_play
+    private fun createNotification(): Notification {
+        val playPauseAction: Int
+        val playPauseIntent: PendingIntent
+        if (player.isPlaying) {
+            playPauseAction = android.R.drawable.ic_media_pause
+            playPauseIntent = PendingIntent.getService(
+                this, 1,
+                Intent(this, MusicService::class.java).apply { action = ACTION_PAUSE },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        } else {
+            playPauseAction = android.R.drawable.ic_media_play
+            playPauseIntent = PendingIntent.getService(
+                this, 0,
+                Intent(this, MusicService::class.java).apply { action = ACTION_PLAY },
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+        }
 
-        val playIntent = PendingIntent.getService(
-            this, 0,
-            Intent(this, MusicService::class.java).apply { action = ACTION_PLAY },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val pauseIntent = PendingIntent.getService(
-            this, 1,
-            Intent(this, MusicService::class.java).apply { action = ACTION_PAUSE },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
         val nextIntent = PendingIntent.getService(
             this, 2,
             Intent(this, MusicService::class.java).apply { action = ACTION_NEXT },
@@ -162,17 +212,20 @@ class MusicService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        return NotificationCompat.Builder(this, channelId)
+        return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(currentSong?.title ?: "Reproduciendo")
             .setContentText(currentSong?.artist ?: "")
-            .setSmallIcon(R.drawable.ic_music_note) // Asegúrate de tener este recurso
+            .setSmallIcon(R.drawable.ic_music_note)
             .setContentIntent(contentIntent)
             .addAction(android.R.drawable.ic_media_previous, "Anterior", prevIntent)
-            .addAction(playPauseIcon, "Play/Pause", if (player.isPlaying) pauseIntent else playIntent)
+            .addAction(playPauseAction, "Play/Pause", playPauseIntent)
             .addAction(android.R.drawable.ic_media_next, "Siguiente", nextIntent)
-            .setStyle(androidx.media.app.NotificationCompat.MediaStyle()
-                .setShowActionsInCompactView(0, 1, 2))
+            .setStyle(
+                androidx.media.app.NotificationCompat.MediaStyle()
+                    .setShowActionsInCompactView(0, 1, 2)
+            )
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setOnlyAlertOnce(true)
             .build()
     }
 
@@ -184,6 +237,7 @@ class MusicService : Service() {
 
     companion object {
         const val NOTIFICATION_ID = 101
+        const val CHANNEL_ID = "music_playback_channel"
         const val ACTION_PLAY = "action_play"
         const val ACTION_PAUSE = "action_pause"
         const val ACTION_NEXT = "action_next"

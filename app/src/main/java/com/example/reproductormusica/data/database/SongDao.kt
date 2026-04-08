@@ -9,6 +9,9 @@ interface SongDao {
     @Query("SELECT * FROM songs ORDER BY dateAdded DESC")
     fun getAllSongs(): Flow<List<Song>>
 
+    @Query("SELECT * FROM songs ORDER BY dateAdded DESC")
+    suspend fun getAllSongsSnapshot(): List<Song>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(song: Song): Long
 

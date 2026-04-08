@@ -1,9 +1,7 @@
 package com.example.reproductormusica.data.repository
 
-import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
-import android.provider.MediaStore
 import com.example.reproductormusica.data.database.AppDatabase
 import com.example.reproductormusica.models.Song
 import kotlinx.coroutines.Dispatchers
@@ -19,16 +17,17 @@ class MusicRepository(private val context: Context) {
 
     // Insertar una canción desde un URI de archivo (p.ej., desde el SAF)
     suspend fun insertSongFromUri(uri: Uri): Long = withContext(Dispatchers.IO) {
-        // Obtener metadatos básicos usando MediaMetadataRetriever
         val retriever = android.media.MediaMetadataRetriever()
         var title = "Desconocido"
-        var artist: String? = null
+        var artist = "Artista desconocido"
         var album: String? = null
         var duration = 0L
         try {
             retriever.setDataSource(context, uri)
-            title = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_TITLE) ?: "Desconocido"
+            title = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_TITLE)
+                ?: uri.lastPathSegment ?: "Desconocido"
             artist = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                ?: "Artista desconocido"
             album = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ALBUM)
             val durationStr = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
             duration = durationStr?.toLongOrNull() ?: 0L
@@ -43,21 +42,31 @@ class MusicRepository(private val context: Context) {
             artist = artist,
             album = album,
             duration = duration,
-            dataUri = uri.toString(),
-            albumArtUri = null // Inicialmente sin portada personalizada
+            uriString = uri.toString(),
+            albumArtUriString = null
         )
         songDao.insert(song)
+    }
+
+    // Actualizar una canción completa
+    suspend fun updateSong(song: Song) = withContext(Dispatchers.IO) {
+        songDao.update(song)
     }
 
     // Actualizar portada de una canción
     suspend fun updateAlbumArt(songId: Long, artUri: Uri) = withContext(Dispatchers.IO) {
         val song = songDao.getSongById(songId) ?: return@withContext
-        val updatedSong = song.copy(albumArtUri = artUri.toString())
+        val updatedSong = song.copy(albumArtUriString = artUri.toString())
         songDao.update(updatedSong)
     }
 
     // Eliminar canción
     suspend fun deleteSong(song: Song) = withContext(Dispatchers.IO) {
         songDao.delete(song)
+    }
+
+    // Obtener todas las canciones como lista (para la cola de reproducción)
+    suspend fun getSongsSnapshot(): List<Song> = withContext(Dispatchers.IO) {
+        songDao.getAllSongsSnapshot()
     }
 }

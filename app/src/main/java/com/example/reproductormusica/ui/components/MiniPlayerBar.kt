@@ -1,57 +1,81 @@
 package com.example.reproductormusica.ui.components
 
-import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.example.reproductormusica.models.Song
+import com.example.reproductormusica.R
 
-class MiniPlayerBar : Fragment() {
-    private var _binding: FragmentMiniPlayerBinding? = null
-    private val binding get() = _binding!!
+@Composable
+fun MiniPlayerBar(
+    song: Song,
+    isPlaying: Boolean,
+    onPlayPause: () -> Unit,
+    onNext: () -> Unit,
+    onBarClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .clickable { onBarClick() },
+        elevation = CardDefaults.cardElevation(8.dp),
+        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AsyncImage(
+                model = song.albumArtUri ?: painterResource(id = R.drawable.ic_default_album),
+                contentDescription = "Portada",
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(MaterialTheme.shapes.small),
+                contentScale = ContentScale.Crop
+            )
 
-    var onClickListener: (() -> Unit)? = null
+            Spacer(modifier = Modifier.width(12.dp))
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        _binding = FragmentMiniPlayerBinding.inflate(inflater, container, false)
-        return binding.root
-    }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = song.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1
+                )
+                Text(
+                    text = song.artist,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+            }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
-        binding.root.setOnClickListener {
-            onClickListener?.invoke()
+            IconButton(onClick = onPlayPause) {
+                Icon(
+                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = if (isPlaying) "Pausar" else "Reproducir"
+                )
+            }
+            IconButton(onClick = onNext) {
+                Icon(Icons.Default.SkipNext, contentDescription = "Siguiente")
+            }
         }
-
-        binding.btnMiniPlayPause.setOnClickListener {
-            // Conectar con servicio
-        }
-
-        binding.btnMiniNext.setOnClickListener {
-            // Conectar con servicio
-        }
-    }
-
-    fun updateSongInfo(song: Song) {
-        binding.textViewMiniTitle.text = song.title
-        binding.textViewMiniArtist.text = song.artist ?: ""
-
-        Glide.with(requireContext())
-            .load(song.albumArtUriParsed ?: R.drawable.ic_music_note_placeholder)
-            .placeholder(R.drawable.ic_music_note_placeholder)
-            .into(binding.imageViewMiniAlbumArt)
-    }
-
-    fun setOnClickListener(listener: () -> Unit) {
-        onClickListener = listener
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
     }
 }

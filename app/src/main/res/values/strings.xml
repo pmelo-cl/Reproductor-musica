@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">ReproductorMusica</string>
+    <string name="notification_channel_name">Reproducción de música</string>
+    <string name="play">Reproducir</string>
+    <string name="pause">Pausar</string>
+    <string name="next">Siguiente</string>
+    <string name="previous">Anterior</string>
+    <string name="stop">Detener</string>
+    <string name="unknown_artist">Artista desconocido</string>
 </resources>

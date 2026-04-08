@@ -3,13 +3,15 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)   // Agrega KSP en lugar de kotlin-kapt
 }
-
+kotlin {
+    jvmToolchain(11)
+}
 android {
-    namespace = "reproductormusica"
+    namespace = "com.example.reproductormusica"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "reproductormusica"
+        applicationId = "com.example.reproductormusica"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
@@ -30,9 +32,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-    }
-    kotlin {
-        jvmToolchain(11)
     }
     buildFeatures {
         compose = true
@@ -57,10 +56,12 @@ dependencies {
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.common)
+    implementation(libs.androidx.media)
 
     // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.navigation.compose)
     ksp(libs.androidx.room.compiler)   // Reemplaza kapt por ksp
 
     // Coil
