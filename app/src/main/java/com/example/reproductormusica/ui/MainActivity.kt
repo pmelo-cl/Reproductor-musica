@@ -8,14 +8,11 @@ import android.content.ServiceConnection
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -27,112 +24,72 @@ import com.example.reproductormusica.ui.theme.ReproductorMusicaTheme
 
 class MainActivity : ComponentActivity() {
 
-    private var musicService: MusicService? = null
+    // Estado observable para el servicio
+    private val musicServiceState = mutableStateOf<MusicService?>(null)
     private var isBound = false
-    private var onServiceBound: ((MusicService) -> Unit)? = null
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             val binder = service as MusicService.LocalBinder
-            musicService = binder.getService()
+            musicServiceState.value = binder.getService()
             isBound = true
-            onServiceBound?.invoke(musicService!!)
+            Log.d("MainActivity", "✅ Servicio conectado")
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
-            musicService = null
+            musicServiceState.value = null
             isBound = false
+            Log.d("MainActivity", "❌ Servicio desconectado")
         }
     }
 
-    // Permiso de almacenamiento/audio
-    private val requestStoragePermission = registerForActivityResult(
+    private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { /* La lista se actualizará automáticamente via Flow */ }
-
-    // Permiso de notificaciones (Android 13+)
-    private val requestNotificationPermission = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { /* Silencioso */ }
-
-    // Selector de archivos de audio
-    private var onAudioPicked: ((android.net.Uri) -> Unit)? = null
-    private val pickAudioLauncher = registerForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        uri?.let {
-            // Persistir permiso de lectura para el URI
-            contentResolver.takePersistableUriPermission(
-                it,
-                Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-            onAudioPicked?.invoke(it)
-        }
-    }
+    ) { /* Opcional: recargar canciones */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Iniciar y vincular el servicio
         Intent(this, MusicService::class.java).also { intent ->
-            startService(intent)
             bindService(intent, connection, Context.BIND_AUTO_CREATE)
         }
 
-        // Solicitar permisos
+        // Solicitar permiso de audio
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requestStoragePermission.launch(Manifest.permission.READ_MEDIA_AUDIO)
-            requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            requestPermissionLauncher.launch(Manifest.permission.READ_MEDIA_AUDIO)
         } else {
-            requestStoragePermission.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+            requestPermissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
         }
 
         setContent {
             ReproductorMusicaTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    val mainViewModel: MainViewModel = viewModel()
-                    val navController = rememberNavController()
+                val navController = rememberNavController()
+                val mainViewModel: MainViewModel = viewModel()
 
-                    // Vincular servicio al ViewModel cuando esté listo
-                    LaunchedEffect(Unit) {
-                        onServiceBound = { service ->
-                            mainViewModel.setMusicService(service)
-                        }
-                        // Por si el servicio ya estaba enlazado antes del LaunchedEffect
-                        musicService?.let { mainViewModel.setMusicService(it) }
+                // Obtener el valor actual del servicio
+                val service = musicServiceState.value
+
+                // Cuando el servicio cambie (de null a objeto), lo pasamos al ViewModel
+                LaunchedEffect(service) {
+                    service?.let {
+                        mainViewModel.setMusicService(it)
+                        Log.d("MainActivity", "✅ Servicio pasado al ViewModel")
                     }
+                }
 
-                    // Configurar callbacks para el selector de archivos
-                    onAudioPicked = { uri ->
-                        mainViewModel.addSongFromUri(uri)
+                NavHost(navController = navController, startDestination = "main") {
+                    composable("main") {
+                        MainScreen(
+                            viewModel = mainViewModel,
+                            onNavigateToPlayer = { navController.navigate("player") }
+                        )
                     }
-
-                    NavHost(navController = navController, startDestination = "main") {
-                        composable("main") {
-                            MainScreen(
-                                viewModel = mainViewModel,
-                                onPickAudio = {
-                                    pickAudioLauncher.launch(arrayOf("audio/*"))
-                                },
-                                onNavigateToPlayer = {
-                                    navController.navigate("player")
-                                }
-                            )
-                        }
-                        composable("player") {
-                            PlayerScreen(
-                                viewModel = mainViewModel,
-                                onPickAudio = {
-                                    pickAudioLauncher.launch(arrayOf("audio/*"))
-                                },
-                                onNavigateToPlayer = {
-                                    navController.navigate("player")
-                                }
-                            )
-                        }
+                    composable("player") {
+                        PlayerScreen(
+                            viewModel = mainViewModel,
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                 }
             }

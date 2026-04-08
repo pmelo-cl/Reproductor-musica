@@ -1,16 +1,11 @@
 package com.example.reproductormusica.data.database
 
+import android.net.Uri
 import androidx.room.TypeConverter
-import java.util.Date
 
 class Converters {
     @TypeConverter
-    fun fromTimestamp(value: Long?): Date? {
-        return value?.let { Date(it) }
-    }
-
+    fun fromUri(uri: Uri?): String? = uri?.toString()
     @TypeConverter
-    fun dateToTimestamp(date: Date?): Long? {
-        return date?.time
-    }
+    fun toUri(uriString: String?): Uri? = uriString?.let { Uri.parse(it) }
 }

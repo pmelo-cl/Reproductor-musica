@@ -1,5 +1,6 @@
 package com.example.reproductormusica.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,8 +17,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.example.reproductormusica.models.Song
 import com.example.reproductormusica.R
+import com.example.reproductormusica.models.Song
 
 @Composable
 fun MiniPlayerBar(
@@ -37,34 +38,30 @@ fun MiniPlayerBar(
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 8.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsyncImage(
-                model = song.albumArtUri ?: painterResource(id = R.drawable.ic_default_album),
-                contentDescription = "Portada",
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(MaterialTheme.shapes.small),
-                contentScale = ContentScale.Crop
-            )
+            if (song.albumArtUri != null) {
+                AsyncImage(
+                    model = song.albumArtUri,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp).clip(MaterialTheme.shapes.small),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Image(
+                    painter = painterResource(R.drawable.ic_default_album),
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp).clip(MaterialTheme.shapes.small),
+                    contentScale = ContentScale.Crop
+                )
+            }
 
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = song.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1
-                )
-                Text(
-                    text = song.artist,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1
-                )
+                Text(text = song.title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+                Text(text = song.artist, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
             }
 
             IconButton(onClick = onPlayPause) {

@@ -1,72 +1,84 @@
 package com.example.reproductormusica.data.repository
 
+import android.content.ContentResolver
 import android.content.Context
+import android.content.Intent
+import android.media.MediaMetadataRetriever
 import android.net.Uri
-import com.example.reproductormusica.data.database.AppDatabase
+import com.example.reproductormusica.data.database.SongDao
 import com.example.reproductormusica.models.Song
+import com.example.reproductormusica.utils.sanitizedFileName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
-class MusicRepository(private val context: Context) {
-    private val database = AppDatabase.getDatabase(context)
-    private val songDao = database.songDao()
-
-    // Obtener canciones desde la base de datos local (con Flow para observar cambios)
+class MusicRepository(
+    private val songDao: SongDao,
+    private val contentResolver: ContentResolver
+) {
     fun getAllSongs(): Flow<List<Song>> = songDao.getAllSongs()
 
-    // Insertar una canción desde un URI de archivo (p.ej., desde el SAF)
-    suspend fun insertSongFromUri(uri: Uri): Long = withContext(Dispatchers.IO) {
-        val retriever = android.media.MediaMetadataRetriever()
-        var title = "Desconocido"
-        var artist = "Artista desconocido"
-        var album: String? = null
-        var duration = 0L
-        try {
-            retriever.setDataSource(context, uri)
-            title = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_TITLE)
-                ?: uri.lastPathSegment ?: "Desconocido"
-            artist = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ARTIST)
-                ?: "Artista desconocido"
-            album = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_ALBUM)
-            val durationStr = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
-            duration = durationStr?.toLongOrNull() ?: 0L
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            retriever.release()
+    suspend fun addSongFromUri(uri: Uri, context: Context): Long {
+        return withContext(Dispatchers.IO) {
+            // Verificar si ya existe
+            val existing = songDao.getSongByUri(uri.toString())
+            if (existing != null) {
+                return@withContext -1L
+            }
+
+            // Tomar permiso persistente (opcional)
+            try {
+                contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (e: SecurityException) {
+                e.printStackTrace()
+            }
+
+            val retriever = MediaMetadataRetriever()
+            return@withContext try {
+                retriever.setDataSource(context, uri)
+                val extractedTitle = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+                val extractedArtist = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                val duration = durationStr?.toLongOrNull() ?: 0L
+
+                val title = extractedTitle?.takeIf { it.isNotBlank() } ?: uri.sanitizedFileName()
+                val artist = extractedArtist?.takeIf { it.isNotBlank() } ?: "Artista desconocido"
+
+                val song = Song(
+                    title = title,
+                    artist = artist,
+                    uriString = uri.toString(),
+                    duration = duration
+                )
+                songDao.insert(song)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                val song = Song(
+                    title = uri.sanitizedFileName(),
+                    artist = "Desconocido",
+                    uriString = uri.toString(),
+                    duration = 0L
+                )
+                songDao.insert(song)
+            } finally {
+                retriever.release()
+            }
         }
-
-        val song = Song(
-            title = title,
-            artist = artist,
-            album = album,
-            duration = duration,
-            uriString = uri.toString(),
-            albumArtUriString = null
-        )
-        songDao.insert(song)
     }
 
-    // Actualizar una canción completa
-    suspend fun updateSong(song: Song) = withContext(Dispatchers.IO) {
-        songDao.update(song)
-    }
-
-    // Actualizar portada de una canción
-    suspend fun updateAlbumArt(songId: Long, artUri: Uri) = withContext(Dispatchers.IO) {
-        val song = songDao.getSongById(songId) ?: return@withContext
-        val updatedSong = song.copy(albumArtUriString = artUri.toString())
-        songDao.update(updatedSong)
-    }
-
-    // Eliminar canción
-    suspend fun deleteSong(song: Song) = withContext(Dispatchers.IO) {
+    suspend fun deleteSong(song: Song) {
         songDao.delete(song)
     }
 
-    // Obtener todas las canciones como lista (para la cola de reproducción)
-    suspend fun getSongsSnapshot(): List<Song> = withContext(Dispatchers.IO) {
-        songDao.getAllSongsSnapshot()
+    suspend fun updateSongAlbumArt(song: Song, artUri: Uri) {
+        val updated = song.copy(albumArtUriString = artUri.toString())
+        songDao.update(updated)
+    }
+
+    suspend fun updateSongInfo(songId: Long, title: String, artist: String) {
+        songDao.updateInfo(songId, title, artist)
     }
 }
