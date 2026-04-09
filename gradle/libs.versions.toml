@@ -11,7 +11,9 @@ coil = "2.7.0"
 coroutines = "1.10.2"
 ksp = "2.3.6"
 navigationCompose = "2.9.7"
-androidx-media = "1.7.0"
+androidx-media = "1.7.1"
+youtubedlAndroid = "0.19.0"
+foundationLayout = "1.10.6"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -52,6 +54,12 @@ androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-toolin
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 androidx-media = { group = "androidx.media", name = "media", version.ref = "androidx-media" }
+
+# YouTube DL Android
+youtubedl-android-library = { group = "io.github.deniscerri.youtubedl-android", name = "library", version.ref = "youtubedlAndroid" }
+youtubedl-android-ffmpeg = { group = "io.github.deniscerri.youtubedl-android", name = "ffmpeg", version.ref = "youtubedlAndroid" }
+youtubedl-android-aria2c = { group = "io.github.deniscerri.youtubedl-android", name = "aria2c", version.ref = "youtubedlAndroid" }
+androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

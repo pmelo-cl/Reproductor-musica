@@ -32,27 +32,34 @@ fun MiniPlayerBar(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .height(72.dp)
-            .clickable { onBarClick() },
-        elevation = CardDefaults.cardElevation(8.dp),
+            .clickable { onBarClick() }
+            .windowInsetsPadding(WindowInsets.navigationBars), // ✅ Evita solapamiento con la barra de sistema
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(72.dp)
+                .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (song.albumArtUri != null) {
                 AsyncImage(
                     model = song.albumArtUri,
                     contentDescription = null,
-                    modifier = Modifier.size(48.dp).clip(MaterialTheme.shapes.small),
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(MaterialTheme.shapes.small),
                     contentScale = ContentScale.Crop
                 )
             } else {
                 Image(
                     painter = painterResource(R.drawable.ic_default_album),
                     contentDescription = null,
-                    modifier = Modifier.size(48.dp).clip(MaterialTheme.shapes.small),
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(MaterialTheme.shapes.small),
                     contentScale = ContentScale.Crop
                 )
             }
@@ -60,13 +67,21 @@ fun MiniPlayerBar(
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = song.title, style = MaterialTheme.typography.titleMedium, maxLines = 1)
-                Text(text = song.artist, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+                Text(
+                    text = song.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1
+                )
+                Text(
+                    text = song.artist,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1
+                )
             }
 
             IconButton(onClick = onPlayPause) {
                 Icon(
-                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = if (isPlaying) "Pausar" else "Reproducir"
                 )
             }

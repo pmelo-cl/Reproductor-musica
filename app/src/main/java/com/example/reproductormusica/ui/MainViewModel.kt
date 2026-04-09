@@ -8,7 +8,7 @@ import com.example.reproductormusica.data.database.AppDatabase
 import com.example.reproductormusica.data.repository.MusicRepository
 import com.example.reproductormusica.models.Song
 import com.example.reproductormusica.services.MusicService
-import com.example.reproductormusica.utils.fuzzyMatch
+import com.example.reproductormusica.utils.advancedMatch
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -20,6 +20,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         contentResolver = application.contentResolver
     )
 
+    private val playlistViewModel: PlaylistViewModel by lazy { PlaylistViewModel(application) }
+
     private var musicService: MusicService? = null
 
     private val _allSongs = MutableStateFlow<List<Song>>(emptyList())
@@ -28,10 +30,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val songs: StateFlow<List<Song>> = combine(_allSongs, _searchQuery) { songs, query ->
         if (query.isBlank()) songs
         else songs.filter { song ->
-            fuzzyMatch(query, song.title) || fuzzyMatch(query, song.artist)
+            advancedMatch(query, song.title) || advancedMatch(query, song.artist)
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    val allSongs: StateFlow<List<Song>> = _allSongs.asStateFlow()
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
     private val _currentSong = MutableStateFlow<Song?>(null)
@@ -46,29 +49,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration.asStateFlow()
 
+    private val _playingPlaylistId = MutableStateFlow<Long?>(null)
+    val playingPlaylistId: StateFlow<Long?> = _playingPlaylistId.asStateFlow()
+
     init {
         loadSongs()
         viewModelScope.launch {
             while (true) {
-                musicService?.let {
-                    _playbackPosition.value = it.getCurrentPosition()
-                    _duration.value = it.getDuration().coerceAtLeast(0L)
-                    _isPlaying.value = it.isPlaying()
+                musicService?.let { svc ->
+                    _playbackPosition.value = svc.getCurrentPosition()
+                    _duration.value = svc.getDuration().coerceAtLeast(0L)
+                    _isPlaying.value = svc.isPlaying()
                 }
                 kotlinx.coroutines.delay(500)
             }
         }
     }
 
-    fun setSearchQuery(query: String) {
-        _searchQuery.value = query
-    }
+    fun setSearchQuery(query: String) { _searchQuery.value = query }
 
     fun setMusicService(service: MusicService) {
         musicService = service
         service.onPlaybackStateChanged = { playing -> _isPlaying.value = playing }
         service.onSongChanged = { song -> _currentSong.value = song }
         service.setQueue(_allSongs.value)
+    }
+
+    fun setQueue(songs: List<Song>) {
+        musicService?.setQueue(songs)
     }
 
     private fun loadSongs() {
@@ -80,29 +88,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun playSong(song: Song) {
-        musicService?.playSong(song)
-    }
+    fun playSong(song: Song) { musicService?.playSong(song) }
+    fun playPause()          { musicService?.playPause() }
+    fun playNext()           { musicService?.playNext() }
+    fun playPrevious()       { musicService?.playPrevious() }
+    fun seekTo(position: Long) { musicService?.seekTo(position) }
 
-    fun playPause() {
-        musicService?.playPause()
-    }
-
-    fun playNext() {
-        musicService?.playNext()
-    }
-
-    fun playPrevious() {
-        musicService?.playPrevious()
-    }
-
-    fun seekTo(position: Long) {
-        musicService?.seekTo(position)
-    }
+    fun setRepeatMode(mode: Int) { musicService?.setRepeatMode(mode) }
+    fun setShuffleMode(enabled: Boolean) { musicService?.setShuffleMode(enabled) }
 
     fun addSongFromUri(uri: Uri) {
         viewModelScope.launch {
-            repository.addSongFromUri(uri, getApplication())
+            val songId = repository.addSongFromUri(uri, getApplication())
+            if (songId > 0) {
+                playlistViewModel.addSongToDefaultPlaylist(songId)
+            }
         }
     }
 
@@ -114,13 +114,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _isPlaying.value = false
             }
             repository.deleteSong(song)
+            playlistViewModel.cleanupDefaultPlaylistIfEmpty()
         }
     }
 
     fun updateSongAlbumArt(song: Song, artUri: Uri) {
         viewModelScope.launch {
             repository.updateSongAlbumArt(song, artUri)
-            // Si es la canción actual, forzar actualización de UI
             if (_currentSong.value?.id == song.id) {
                 _currentSong.value = _currentSong.value?.copy(albumArtUriString = artUri.toString())
             }
@@ -134,5 +134,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _currentSong.value = _currentSong.value?.copy(title = newTitle, artist = newArtist)
             }
         }
+    }
+
+    fun playPlaylist(playlistId: Long, songs: List<Song>) {
+        _playingPlaylistId.value = playlistId
+        setQueue(songs)
+        if (songs.isNotEmpty()) {
+            playSong(songs.first())
+        }
+    }
+
+    fun stopPlaylist() {
+        _playingPlaylistId.value = null
     }
 }

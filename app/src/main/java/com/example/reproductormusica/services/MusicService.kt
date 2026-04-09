@@ -20,6 +20,7 @@ import com.example.reproductormusica.R
 import com.example.reproductormusica.models.Song
 import com.example.reproductormusica.ui.MainActivity
 import kotlinx.coroutines.*
+import androidx.media3.common.PlaybackException
 
 class MusicService : Service() {
     private val binder = LocalBinder()
@@ -27,6 +28,11 @@ class MusicService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var currentSong: Song? = null
     private var songQueue: List<Song> = emptyList()
+    private var currentIndex = -1
+
+    private var repeatMode = Player.REPEAT_MODE_OFF
+    private var shuffleMode = false
+    private val playbackHistory = mutableListOf<Song>()
 
     var onPlaybackStateChanged: ((Boolean) -> Unit)? = null
     var onSongChanged: ((Song) -> Unit)? = null
@@ -48,11 +54,41 @@ class MusicService : Service() {
                     val song = songQueue.find { it.id == id }
                     if (song != null) {
                         currentSong = song
+                        currentIndex = songQueue.indexOf(song)
                         onSongChanged?.invoke(song)
+                        updateNotification()
                     }
                 }
             }
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_ENDED) {
+                    handleSongEnd()
+                }
+            }
+            override fun onPlayerError(error: PlaybackException) {
+                Log.e("MusicService", "ExoPlayer error", error)
+            }
         })
+    }
+
+    private fun handleSongEnd() {
+        when {
+            repeatMode == Player.REPEAT_MODE_ONE -> {
+                player.seekTo(0)
+                player.play()
+            }
+            shuffleMode -> playRandomNext()
+            else -> playNext()
+        }
+    }
+
+    private fun playRandomNext() {
+        val candidates = songQueue.filter { it.id != currentSong?.id }
+        if (candidates.isNotEmpty()) {
+            currentSong?.let { playbackHistory.add(it) }
+            val next = candidates.random()
+            playSong(next)
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder = binder
@@ -72,21 +108,39 @@ class MusicService : Service() {
 
     fun setQueue(songs: List<Song>) {
         songQueue = songs
+        playbackHistory.clear()
+        if (songs.isNotEmpty()) {
+            val mediaItems = songs.map { song ->
+                MediaItem.Builder()
+                    .setUri(song.uri)
+                    .setMediaId(song.id.toString())
+                    .build()
+            }
+            player.setMediaItems(mediaItems)
+            currentIndex = -1
+        } else {
+            player.clearMediaItems()
+        }
     }
 
     fun playSong(song: Song) {
-        Log.d("MusicService", "playSong: ${song.title} - ${song.uri}")
-        currentSong = song
-        val mediaItem = MediaItem.Builder()
-            .setUri(song.uri)
-            .setMediaId(song.id.toString())
-            .build()
-        player.setMediaItem(mediaItem)
-        player.prepare()
-        player.play()
+        val index = songQueue.indexOfFirst { it.id == song.id }
+        if (index != -1) {
+            currentIndex = index
+            player.seekToDefaultPosition(index)
+            player.prepare()
+            player.play()
+            currentSong = song
+        } else {
+            // Canción no está en la cola: reproducir directamente
+            currentSong = song
+            player.setMediaItem(MediaItem.fromUri(song.uri))
+            player.prepare()
+            player.play()
+            currentIndex = -1
+        }
         startForegroundServiceWithNotification()
         onSongChanged?.invoke(song)
-        Log.d("MusicService", "Reproducción iniciada, isPlaying=${player.isPlaying}")
     }
 
     fun playPause() {
@@ -94,11 +148,46 @@ class MusicService : Service() {
     }
 
     fun playNext() {
-        player.seekToNextMediaItem()
+        if (shuffleMode) {
+            playRandomNext()
+        } else {
+            if (songQueue.isNotEmpty() && currentIndex < songQueue.size - 1) {
+                currentIndex++
+                val nextSong = songQueue[currentIndex]
+                player.seekToDefaultPosition(currentIndex)
+                player.play()
+                currentSong = nextSong
+                onSongChanged?.invoke(nextSong)
+            } else {
+                // Si está al final, volver al principio si el modo repetición total está activo
+                if (repeatMode == Player.REPEAT_MODE_ALL) {
+                    currentIndex = 0
+                    val firstSong = songQueue.firstOrNull()
+                    if (firstSong != null) {
+                        player.seekToDefaultPosition(0)
+                        player.play()
+                        currentSong = firstSong
+                        onSongChanged?.invoke(firstSong)
+                    }
+                }
+            }
+        }
     }
 
     fun playPrevious() {
-        player.seekToPreviousMediaItem()
+        if (shuffleMode && playbackHistory.isNotEmpty()) {
+            val previous = playbackHistory.removeLast()
+            playSong(previous)
+        } else {
+            if (songQueue.isNotEmpty() && currentIndex > 0) {
+                currentIndex--
+                val prevSong = songQueue[currentIndex]
+                player.seekToDefaultPosition(currentIndex)
+                player.play()
+                currentSong = prevSong
+                onSongChanged?.invoke(prevSong)
+            }
+        }
     }
 
     fun seekTo(positionMs: Long) {
@@ -113,6 +202,16 @@ class MusicService : Service() {
         player.stop()
         currentSong = null
         stopForeground(STOP_FOREGROUND_REMOVE)
+    }
+
+    fun setRepeatMode(mode: Int) {
+        repeatMode = mode
+        player.repeatMode = mode
+    }
+
+    fun setShuffleMode(enabled: Boolean) {
+        shuffleMode = enabled
+        if (!enabled) playbackHistory.clear()
     }
 
     private fun startForegroundServiceWithNotification() {

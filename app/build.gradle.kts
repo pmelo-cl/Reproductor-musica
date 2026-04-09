@@ -1,11 +1,9 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp)   // Agrega KSP en lugar de kotlin-kapt
+    alias(libs.plugins.ksp)
 }
-kotlin {
-    jvmToolchain(11)
-}
+
 android {
     namespace = "com.example.reproductormusica"
     compileSdk = 36
@@ -33,12 +31,21 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    kotlin {
+        jvmToolchain(11)
+    }
     buildFeatures {
         compose = true
+    }
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
 }
 
 dependencies {
+    // Core
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -52,6 +59,9 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
 
+    // Navigation Compose
+    implementation(libs.androidx.navigation.compose)
+
     // Media3
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
@@ -61,11 +71,16 @@ dependencies {
     // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    implementation(libs.androidx.navigation.compose)
-    ksp(libs.androidx.room.compiler)   // Reemplaza kapt por ksp
+    ksp(libs.androidx.room.compiler)
 
     // Coil
     implementation(libs.coil.compose)
+
+    // YouTube DL Android (descarga de audio)
+    implementation(libs.youtubedl.android.library) {
+        exclude(group = "io.github.deniscerri.youtubedl-android", module = "ffmpeg")
+    }
+    implementation(libs.youtubedl.android.aria2c)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)

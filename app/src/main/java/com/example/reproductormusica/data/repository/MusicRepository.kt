@@ -20,13 +20,11 @@ class MusicRepository(
 
     suspend fun addSongFromUri(uri: Uri, context: Context): Long {
         return withContext(Dispatchers.IO) {
-            // Verificar si ya existe
             val existing = songDao.getSongByUri(uri.toString())
             if (existing != null) {
                 return@withContext -1L
             }
 
-            // Tomar permiso persistente (opcional)
             try {
                 contentResolver.takePersistableUriPermission(
                     uri,

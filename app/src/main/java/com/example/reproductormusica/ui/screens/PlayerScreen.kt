@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.Player
 import coil.compose.AsyncImage
 import com.example.reproductormusica.R
 import com.example.reproductormusica.models.Song
@@ -161,16 +162,27 @@ fun PlayerScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Dentro de PlayerScreen
+                var repeatMode by remember { mutableIntStateOf(Player.REPEAT_MODE_OFF) }
+                var shuffleEnabled by remember { mutableStateOf(false) }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = { /* Aleatorio */ }) {
-                        Icon(Icons.Default.Shuffle, contentDescription = "Aleatorio")
+                    IconButton(onClick = {
+                        shuffleEnabled = !shuffleEnabled
+                        viewModel.setShuffleMode(shuffleEnabled)
+                    }) {
+                        Icon(
+                            Icons.Default.Shuffle,
+                            null,
+                            tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
                     }
                     IconButton(onClick = { viewModel.playPrevious() }) {
-                        Icon(Icons.Default.SkipPrevious, contentDescription = "Anterior")
+                        Icon(Icons.Default.SkipPrevious, "Anterior")
                     }
                     FloatingActionButton(
                         onClick = { viewModel.playPause() },
@@ -178,15 +190,26 @@ fun PlayerScreen(
                     ) {
                         Icon(
                             if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) "Pausar" else "Reproducir",
+                            if (isPlaying) "Pausar" else "Reproducir",
                             modifier = Modifier.size(32.dp)
                         )
                     }
                     IconButton(onClick = { viewModel.playNext() }) {
-                        Icon(Icons.Default.SkipNext, contentDescription = "Siguiente")
+                        Icon(Icons.Default.SkipNext, "Siguiente")
                     }
-                    IconButton(onClick = { /* Repetir */ }) {
-                        Icon(Icons.Default.Repeat, contentDescription = "Repetir")
+                    IconButton(onClick = {
+                        repeatMode = when (repeatMode) {
+                            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ONE
+                            Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_ALL
+                            else -> Player.REPEAT_MODE_OFF
+                        }
+                        viewModel.setRepeatMode(repeatMode)
+                    }) {
+                        Icon(
+                            Icons.Default.Repeat,
+                            null,
+                            tint = if (repeatMode != Player.REPEAT_MODE_OFF) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             }
@@ -249,6 +272,7 @@ fun PlayerScreen(
     } ?: run {
         LaunchedEffect(Unit) { onBack() }
     }
+
 }
 
 private fun formatTime(millis: Long): String {
@@ -257,3 +281,4 @@ private fun formatTime(millis: Long): String {
     val seconds = totalSeconds % 60
     return String.format("%d:%02d", minutes, seconds)
 }
+
