@@ -57,7 +57,6 @@ fun PlaylistDetailScreen(
         }
     }
 
-    // Para editar canción desde el diálogo de añadir
     var songForEdit by remember { mutableStateOf<Song?>(null) }
     var songForArtChange by remember { mutableStateOf<Song?>(null) }
     var songForDelete by remember { mutableStateOf<Song?>(null) }
@@ -117,12 +116,11 @@ fun PlaylistDetailScreen(
                         IconButton(onClick = { searchActive = true }) {
                             Icon(Icons.Default.Search, "Buscar")
                         }
-                        // Ocultar añadir canciones y opciones en la playlist por defecto
                         if (!isDefaultPlaylist) {
                             IconButton(onClick = { showAddSongsDialog = true }) {
                                 Icon(Icons.AutoMirrored.Filled.PlaylistAdd, "Añadir canciones")
                             }
-                            IconButton(onClick = { /* Opciones editar playlist */ }) {
+                            IconButton(onClick = { }) {
                                 Icon(Icons.Default.MoreVert, "Opciones")
                             }
                         }
@@ -145,14 +143,12 @@ fun PlaylistDetailScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Cabecera
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Forzar portada por defecto si es la playlist especial
                 if (isDefaultPlaylist) {
                     Image(
                         painter = painterResource(R.drawable.ic_default_album),
@@ -223,7 +219,6 @@ fun PlaylistDetailScreen(
         }
     }
 
-    // Diálogo añadir canciones (con búsqueda y opciones) - solo para playlists normales
     if (showAddSongsDialog && !isDefaultPlaylist) {
         AddSongsToPlaylistDialog(
             allSongs = allSongs,
@@ -236,7 +231,6 @@ fun PlaylistDetailScreen(
         )
     }
 
-    // Diálogo quitar canción (solo para playlists normales)
     if (!isDefaultPlaylist) {
         songToRemove?.let { song ->
             AlertDialog(
@@ -256,7 +250,6 @@ fun PlaylistDetailScreen(
         }
     }
 
-    // Diálogo editar canción
     songForEdit?.let { song ->
         LaunchedEffect(song) {
             editTitle = song.title
@@ -296,7 +289,6 @@ fun PlaylistDetailScreen(
         )
     }
 
-    // Diálogo eliminar canción (con advertencia especial para "Canciones disponibles")
     songForDelete?.let { song ->
         AlertDialog(
             onDismissRequest = { songForDelete = null },

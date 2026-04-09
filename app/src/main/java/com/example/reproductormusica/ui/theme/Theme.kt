@@ -3,18 +3,35 @@ package com.example.reproductormusica.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFFBB86FC),
-    secondary = Color(0xFF03DAC6),
-    tertiary = Color(0xFF3700B3)
+    primary = LightGreenPrimary,
+    onPrimary = DeepBlack,
+    secondary = LightPurpleSecondary,
+    onSecondary = TextPrimaryDark,
+    tertiary = LightPurpleTertiary,
+    background = DeepBlack,
+    onBackground = TextPrimaryDark,
+    surface = SurfaceDark,
+    onSurface = TextPrimaryDark,
+    surfaceVariant = SurfaceVariantDark,
+    onSurfaceVariant = TextSecondaryDark,
+    error = ErrorRed
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF6200EE),
-    secondary = Color(0xFF03DAC6),
-    tertiary = Color(0xFF3700B3)
+    primary = LightGreenPrimary,
+    onPrimary = DeepBlack,
+    secondary = LightPurpleSecondary,
+    onSecondary = TextPrimaryLight,
+    tertiary = LightPurpleTertiary,
+    background = SurfaceLight,
+    onBackground = TextPrimaryLight,
+    surface = SurfaceLight,
+    onSurface = TextPrimaryLight,
+    surfaceVariant = SurfaceVariantLight,
+    onSurfaceVariant = TextSecondaryLight,
+    error = ErrorRed
 )
 
 @Composable

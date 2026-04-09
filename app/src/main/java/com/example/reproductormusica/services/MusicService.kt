@@ -132,7 +132,6 @@ class MusicService : Service() {
             player.play()
             currentSong = song
         } else {
-            // Canción no está en la cola: reproducir directamente
             currentSong = song
             player.setMediaItem(MediaItem.fromUri(song.uri))
             player.prepare()
@@ -159,7 +158,6 @@ class MusicService : Service() {
                 currentSong = nextSong
                 onSongChanged?.invoke(nextSong)
             } else {
-                // Si está al final, volver al principio si el modo repetición total está activo
                 if (repeatMode == Player.REPEAT_MODE_ALL) {
                     currentIndex = 0
                     val firstSong = songQueue.firstOrNull()

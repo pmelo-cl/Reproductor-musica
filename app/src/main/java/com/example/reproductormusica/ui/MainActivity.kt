@@ -66,7 +66,7 @@ class MainActivity : ComponentActivity() {
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { /* no es necesario hacer nada extra */ }
+    ) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,11 +100,21 @@ class MainActivity : ComponentActivity() {
                 val downloadReady by downloadServiceReady.collectAsState()
                 val scope = rememberCoroutineScope()
 
-                // Callback para añadir canciones descargadas a la playlist por defecto
                 LaunchedEffect(Unit) {
                     downloadViewModel.onSongDownloaded = { song ->
                         scope.launch {
                             playlistViewModel.addSongToDefaultPlaylist(song.id)
+                        }
+                    }
+                    downloadViewModel.onPlaylistDownloaded = { outcome ->
+                        scope.launch {
+                            playlistViewModel.createPlaylistFromDownload(
+                                outcome.songs,
+                                outcome.playlistTitleHint
+                            )
+                            for (song in outcome.songs) {
+                                playlistViewModel.addSongToDefaultPlaylist(song.id)
+                            }
                         }
                     }
                 }
@@ -128,8 +138,7 @@ class MainActivity : ComponentActivity() {
                             onNavigateToDownload = { navController.navigate("download") },
                             onNavigateToPlaylistDetail = { playlistId ->
                                 navController.navigate("playlist/$playlistId")
-                            },
-                            onNavigateToSpotifyImport = { navController.navigate("spotify_import") }
+                            }
                         )
                     }
                     composable("player") {

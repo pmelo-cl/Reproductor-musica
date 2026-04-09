@@ -14,6 +14,8 @@ navigationCompose = "2.9.7"
 androidx-media = "1.7.1"
 youtubedlAndroid = "0.19.0"
 foundationLayout = "1.10.6"
+retrofit = "2.11.0"
+okhttp = "4.12.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -60,6 +62,11 @@ youtubedl-android-library = { group = "io.github.deniscerri.youtubedl-android", 
 youtubedl-android-ffmpeg = { group = "io.github.deniscerri.youtubedl-android", name = "ffmpeg", version.ref = "youtubedlAndroid" }
 youtubedl-android-aria2c = { group = "io.github.deniscerri.youtubedl-android", name = "aria2c", version.ref = "youtubedlAndroid" }
 androidx-compose-foundation-layout = { group = "androidx.compose.foundation", name = "foundation-layout", version.ref = "foundationLayout" }
+
+retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+retrofitGson = { group = "com.squareup.retrofit2", name = "converter-gson", version.ref = "retrofit" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttpLogging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -1,15 +1,19 @@
 package com.example.reproductormusica.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.reproductormusica.R
 import com.example.reproductormusica.ui.DownloadViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -21,13 +25,16 @@ fun DownloadScreen(
     onDownloadComplete: (() -> Unit)? = null
 ) {
     var url by remember { mutableStateOf("") }
+    var playlistMode by remember { mutableStateOf(false) }
+
     val progress by viewModel.progress.collectAsState()
     val status by viewModel.status.collectAsState()
     val isDownloading by viewModel.isDownloading.collectAsState()
     val downloadedSong by viewModel.downloadedSong.collectAsState()
+    val downloadedPlaylistSongs by viewModel.downloadedPlaylistSongs.collectAsState()
 
-    LaunchedEffect(downloadedSong) {
-        if (downloadedSong != null) {
+    LaunchedEffect(downloadedSong, downloadedPlaylistSongs) {
+        if (downloadedSong != null || !downloadedPlaylistSongs.isNullOrEmpty()) {
             onDownloadComplete?.invoke()
         }
     }
@@ -35,7 +42,7 @@ fun DownloadScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Descargar música") },
+                title = { Text(stringResource(R.string.download_music)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
@@ -52,7 +59,6 @@ fun DownloadScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (!downloadServiceReady) {
-                // Mostrar loading mientras el servicio no está listo
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator()
@@ -64,7 +70,7 @@ fun DownloadScreen(
             }
 
             Text(
-                text = "Pega la URL de YouTube, SoundCloud u otro sitio compatible",
+                text = stringResource(R.string.download_paste_url_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
@@ -72,23 +78,80 @@ fun DownloadScreen(
             OutlinedTextField(
                 value = url,
                 onValueChange = { url = it },
-                label = { Text("URL del video/audio") },
-                placeholder = { Text("https://...") },
+                label = { Text(stringResource(R.string.download_url_label)) },
+                placeholder = { Text(stringResource(R.string.download_url_placeholder)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 enabled = !isDownloading
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.PlaylistPlay,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                stringResource(R.string.download_playlist_mode_title),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                stringResource(R.string.download_playlist_mode_subtitle),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Switch(
+                        checked = playlistMode,
+                        onCheckedChange = { playlistMode = it },
+                        enabled = !isDownloading
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
 
+            val buttonLabel = when {
+                isDownloading && playlistMode -> stringResource(R.string.download_playlist_in_progress)
+                isDownloading -> stringResource(R.string.download_in_progress)
+                playlistMode -> stringResource(R.string.download_audio_playlist)
+                else -> stringResource(R.string.download_audio_single)
+            }
+
             Button(
-                onClick = { viewModel.startDownload(url) },
+                onClick = { viewModel.startDownload(url, playlistMode) },
                 enabled = url.isNotBlank() && !isDownloading && downloadServiceReady,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(Icons.Default.Download, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(if (isDownloading) "Descargando..." else "Descargar Audio")
+                Text(buttonLabel)
             }
 
             if (progress > 0f) {
@@ -113,7 +176,10 @@ fun DownloadScreen(
                         modifier = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("¡Descarga completada!", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            stringResource(R.string.download_completed_one),
+                            style = MaterialTheme.typography.titleMedium
+                        )
                         Text(downloadedSong!!.title, style = MaterialTheme.typography.bodyLarge)
                         Spacer(modifier = Modifier.height(8.dp))
                         Button(
@@ -122,7 +188,58 @@ fun DownloadScreen(
                                 url = ""
                             }
                         ) {
-                            Text("Descargar otra")
+                            Text(stringResource(R.string.download_another))
+                        }
+                    }
+                }
+            }
+
+            val playlistSongs = downloadedPlaylistSongs
+            if (!playlistSongs.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            stringResource(R.string.download_completed_many),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            stringResource(R.string.download_tracks_added, playlistSongs.size),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        playlistSongs.take(6).forEach { song ->
+                            Text(
+                                "• ${song.title}",
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                        if (playlistSongs.size > 6) {
+                            Text(
+                                "… ${playlistSongs.size - 6} más",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                viewModel.clearDownloadedSong()
+                                url = ""
+                            }
+                        ) {
+                            Text(stringResource(R.string.download_another))
                         }
                     }
                 }
@@ -135,9 +252,12 @@ fun DownloadScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("ℹ️ Información", style = MaterialTheme.typography.titleSmall)
                     Text(
-                        "El audio se descargará en formato MP3 en la carpeta Downloads de tu dispositivo.",
+                        stringResource(R.string.download_info_title),
+                        style = MaterialTheme.typography.titleSmall
+                    )
+                    Text(
+                        stringResource(R.string.download_info_body),
                         style = MaterialTheme.typography.bodySmall
                     )
                 }

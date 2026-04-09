@@ -44,4 +44,37 @@ class PlaylistRepository(private val playlistDao: PlaylistDao) {
     suspend fun getPlaylistById(playlistId: Long): Playlist? {
         return playlistDao.getPlaylistById(playlistId)
     }
+
+    /**
+     * Creates a playlist with [songIds] in order. Name comes from [titleHint] if unique,
+     * otherwise "Name (2)", …; if [titleHint] is null/blank, uses "Playlist N" with first free N.
+     */
+    suspend fun createPlaylistWithSongsFromDownload(titleHint: String?, songIds: List<Long>): Long {
+        val name = resolveUniquePlaylistName(titleHint)
+        val playlistId = playlistDao.insertPlaylist(Playlist(name = name))
+        for (songId in songIds) {
+            playlistDao.addSongToPlaylist(PlaylistSongCrossRef(playlistId, songId))
+        }
+        return playlistId
+    }
+
+    private suspend fun resolveUniquePlaylistName(titleHint: String?): String {
+        val existing = playlistDao.getAllPlaylistNames().toMutableSet()
+        val hint = titleHint?.trim()?.takeIf { it.isNotBlank() }
+        if (hint != null) {
+            if (hint !in existing) return hint
+            var i = 2
+            while (true) {
+                val candidate = "$hint ($i)"
+                if (candidate !in existing) return candidate
+                i++
+            }
+        }
+        var n = 1
+        while (true) {
+            val candidate = "Playlist $n"
+            if (candidate !in existing) return candidate
+            n++
+        }
+    }
 }

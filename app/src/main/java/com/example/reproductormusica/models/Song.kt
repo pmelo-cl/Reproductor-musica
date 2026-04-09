@@ -13,8 +13,8 @@ data class Song(
     val artist: String = "Artista desconocido",
     val album: String? = null,
     val duration: Long = 0,
-    val uriString: String,                   // URI del archivo de audio (antes "dataUri")
-    val albumArtUriString: String? = null,   // URI de la portada personalizada
+    val uriString: String,
+    val albumArtUriString: String? = null,
     val dateAdded: Long = System.currentTimeMillis()
 ) {
     val uri: Uri

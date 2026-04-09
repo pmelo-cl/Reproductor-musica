@@ -33,15 +33,18 @@ fun MiniPlayerBar(
         modifier = modifier
             .fillMaxWidth()
             .clickable { onBarClick() }
-            .windowInsetsPadding(WindowInsets.navigationBars), // ✅ Evita solapamiento con la barra de sistema
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-        shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+            .windowInsetsPadding(WindowInsets.navigationBars),
+        elevation = CardDefaults.cardElevation(defaultElevation = 14.dp),
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp)
-                .padding(horizontal = 8.dp),
+                .height(74.dp)
+                .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (song.albumArtUri != null) {
@@ -70,12 +73,14 @@ fun MiniPlayerBar(
                 Text(
                     text = song.title,
                     style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1
+                    maxLines = 1,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = song.artist,
                     style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1
+                    maxLines = 1,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 

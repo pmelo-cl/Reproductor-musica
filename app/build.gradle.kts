@@ -78,12 +78,18 @@ dependencies {
 
     // YouTube DL Android (descarga de audio)
     implementation(libs.youtubedl.android.library) {
-        exclude(group = "io.github.deniscerri.youtubedl-android", module = "ffmpeg")
     }
     implementation(libs.youtubedl.android.aria2c)
+    implementation(libs.youtubedl.android.ffmpeg)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
+
+    // Networking (MusicBrainz / Cover Art Archive)
+    implementation(libs.retrofit)
+    implementation(libs.retrofitGson)
+    implementation(libs.okhttp)
+    implementation(libs.okhttpLogging)
 
     // Testing
     testImplementation(libs.junit)

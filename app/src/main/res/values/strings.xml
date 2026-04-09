@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ReproductorMusica</string>
+    <string name="app_name">Love U</string>
     <string name="notification_channel_name">Reproducción de música</string>
     <string name="play">Reproducir</string>
     <string name="pause">Pausar</string>
@@ -7,4 +7,39 @@
     <string name="previous">Anterior</string>
     <string name="stop">Detener</string>
     <string name="unknown_artist">Artista desconocido</string>
+    <string name="feed">Inicio</string>
+    <string name="library">Biblioteca</string>
+    <string name="new_playlist">Nueva playlist</string>
+    <string name="name">Nombre</string>
+    <string name="create">Crear</string>
+    <string name="cancel">Cancelar</string>
+    <string name="add_song">Añadir canción</string>
+    <string name="download_music">Descargar música</string>
+    <string name="music_organized">Tu música, mejor organizada</string>
+    <string name="import_create_playlists">Importa canciones, crea playlists y disfruta de la pirateria.</string>
+    <string name="import_songs">Importar canciones</string>
+    <string name="download_new_tracks">Descarga nuevas pistas</string>
+    <string name="open_downloads">Abrir descargas</string>
+    <string name="download_paste_url_hint">Pega la URL de YouTube, SoundCloud u otro sitio compatible</string>
+    <string name="download_url_label">URL del video o lista</string>
+    <string name="download_url_placeholder">https://…</string>
+    <string name="download_playlist_mode_title">Lista de reproducción completa</string>
+    <string name="download_playlist_mode_subtitle">Descarga todas las pistas de una playlist (yt-dlp, sin --no-playlist)</string>
+    <string name="download_audio_single">Descargar audio</string>
+    <string name="download_audio_playlist">Descargar playlist</string>
+    <string name="download_in_progress">Descargando…</string>
+    <string name="download_playlist_in_progress">Descargando playlist…</string>
+    <string name="download_completed_one">¡Descarga completada!</string>
+    <string name="download_completed_many">¡Playlist descargada!</string>
+    <string name="download_tracks_added">%1$d canciones añadidas a la biblioteca</string>
+    <string name="download_another">Descargar otra</string>
+    <string name="download_info_title">Información</string>
+    <string name="download_info_body">El audio se guarda en la carpeta de la app en formato compatible (p. ej. M4A). Con el modo playlist, cada pista se añade por separado.</string>
+    <string name="download_notification_complete_title">Descarga finalizada</string>
+    <string name="download_notification_single_subtitle">%1$s</string>
+    <string name="download_notification_playlist_subtitle">%1$d canciones guardadas en la biblioteca</string>
+    <string name="download_notification_error_title">Error en la descarga</string>
+    <string name="download_notification_channel_complete">Descargas completadas</string>
+    <!-- MusicBrainz exige User-Agent con app + contacto: cambia el correo si publicas la app. -->
+    <string name="musicbrainz_user_agent">LoveU/1.0 (noreply@example.com)</string>
 </resources>

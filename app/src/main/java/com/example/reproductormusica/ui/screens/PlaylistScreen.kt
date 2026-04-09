@@ -105,7 +105,7 @@ fun PlaylistListScreen(
                         IconButton(onClick = onPickAudio) {
                             Icon(Icons.Default.Add, "Añadir canción")
                         }
-                        IconButton(onClick = onNavigateToDownload) {   // <-- Nuevo botón
+                        IconButton(onClick = onNavigateToDownload) {
                             Icon(Icons.Default.Download, "Descargar música")
                         }
                     }
@@ -155,10 +155,9 @@ fun PlaylistListScreen(
         }
     }
 
-    // Diálogo renombrar
     playlistToRename?.let { pl ->
         AlertDialog(
-            onDismissRequest = { playlistToRename = null },
+            onDismissRequest = { },
             title = { Text("Renombrar playlist") },
             text = {
                 OutlinedTextField(
@@ -173,7 +172,6 @@ fun PlaylistListScreen(
                 TextButton(
                     onClick = {
                         playlistViewModel.renamePlaylist(pl, newName.trim())
-                        playlistToRename = null
                     },
                     enabled = newName.isNotBlank()
                 ) {
@@ -181,27 +179,25 @@ fun PlaylistListScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { playlistToRename = null }) { Text("Cancelar") }
+                TextButton(onClick = { }) { Text("Cancelar") }
             }
         )
     }
 
-    // Diálogo eliminar
     playlistToDelete?.let { pl ->
         AlertDialog(
-            onDismissRequest = { playlistToDelete = null },
+            onDismissRequest = { },
             title = { Text("Eliminar playlist") },
             text = { Text("¿Eliminar '${pl.name}'? Las canciones no se borrarán.") },
             confirmButton = {
                 TextButton(onClick = {
                     playlistViewModel.deletePlaylist(pl)
-                    playlistToDelete = null
                 }) {
                     Text("Eliminar", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { playlistToDelete = null }) { Text("Cancelar") }
+                TextButton(onClick = { }) { Text("Cancelar") }
             }
         )
     }
@@ -238,7 +234,6 @@ private fun PlaylistItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Imagen de portada: si es la playlist por defecto, forzar icono por defecto
             if (isDefault) {
                 Image(
                     painter = painterResource(R.drawable.ic_default_album),
@@ -285,7 +280,6 @@ private fun PlaylistItem(
                 )
                 Spacer(Modifier.width(8.dp))
             }
-            // Menú de opciones solo si NO es la playlist por defecto
             if (!isDefault) {
                 Box {
                     IconButton(onClick = { menuExpanded = true }) {

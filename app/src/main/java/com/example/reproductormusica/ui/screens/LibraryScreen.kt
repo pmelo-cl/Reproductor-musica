@@ -146,7 +146,6 @@ fun LibraryScreen(
         }
     }
 
-    // ── Delete dialog ─────────────────────────────────────────────────────────
     songForDelete?.let { song ->
         AlertDialog(
             onDismissRequest = { songForDelete = null },
@@ -164,7 +163,6 @@ fun LibraryScreen(
         )
     }
 
-    // ── Edit info dialog ──────────────────────────────────────────────────────
     songForEdit?.let { song ->
         AlertDialog(
             onDismissRequest = { songForEdit = null },

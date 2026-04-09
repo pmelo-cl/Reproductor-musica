@@ -27,6 +27,9 @@ interface PlaylistDao {
     @Query("SELECT * FROM playlists WHERE name = :name LIMIT 1")
     suspend fun getPlaylistByName(name: String): Playlist?
 
+    @Query("SELECT name FROM playlists")
+    suspend fun getAllPlaylistNames(): List<String>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun addSongToPlaylist(crossRef: PlaylistSongCrossRef)
 

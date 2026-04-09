@@ -9,6 +9,7 @@ import com.example.reproductormusica.data.database.AppDatabase
 import com.example.reproductormusica.data.repository.PlaylistRepository
 import com.example.reproductormusica.models.Playlist
 import com.example.reproductormusica.models.PlaylistWithSongs
+import com.example.reproductormusica.models.Song
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -31,7 +32,6 @@ class PlaylistViewModel(application: Application) : AndroidViewModel(application
 
     init {
         viewModelScope.launch {
-            // Crear playlist por defecto al iniciar la app si no existe
             ensureDefaultPlaylistExists()
         }
     }
@@ -69,16 +69,21 @@ class PlaylistViewModel(application: Application) : AndroidViewModel(application
     }
 
     suspend fun addSongToDefaultPlaylist(songId: Long) {
-        // Asegurar que la playlist existe
         ensureDefaultPlaylistExists()
         val default = repository.getPlaylistByName("Canciones disponibles")
         default?.let { repository.addSongToPlaylist(it.id, songId) }
     }
 
+    fun createPlaylistFromDownload(songs: List<Song>, titleHint: String?) {
+        if (songs.isEmpty()) return
+        viewModelScope.launch {
+            repository.createPlaylistWithSongsFromDownload(titleHint, songs.map { it.id })
+        }
+    }
+
     fun removeSongFromPlaylist(playlistId: Long, songId: Long) {
         viewModelScope.launch {
             repository.removeSongFromPlaylist(playlistId, songId)
-            // Si la playlist de la que se eliminó es "Canciones disponibles", verificar si quedó vacía
             val playlist = repository.getPlaylistById(playlistId)
             if (playlist?.name == "Canciones disponibles") {
                 val songs = repository.getPlaylistWithSongs(playlistId).first()?.songs ?: emptyList()
@@ -89,7 +94,6 @@ class PlaylistViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    // También cuando se elimina una canción completamente (desde MainViewModel), se debe llamar a un método que limpie la playlist por defecto
     suspend fun cleanupDefaultPlaylistIfEmpty() {
         val default = repository.getPlaylistByName("Canciones disponibles")
         if (default != null) {

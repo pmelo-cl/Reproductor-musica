@@ -7,12 +7,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.example.reproductormusica.R
 import com.example.reproductormusica.ui.MainViewModel
 import com.example.reproductormusica.ui.PlaylistViewModel
@@ -25,8 +28,7 @@ fun MainScreen(
     playlistViewModel: PlaylistViewModel,
     onNavigateToPlayer: () -> Unit,
     onNavigateToDownload: () -> Unit,
-    onNavigateToPlaylistDetail: (Long) -> Unit,
-    onNavigateToSpotifyImport: () -> Unit
+    onNavigateToPlaylistDetail: (Long) -> Unit
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val currentSong by viewModel.currentSong.collectAsState()
@@ -40,14 +42,16 @@ fun MainScreen(
     )
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             if (selectedTab == 1) {
                 FloatingActionButton(
                     onClick = { showCreatePlaylistDialog = true },
                     containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Nueva playlist")
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.new_playlist))
                 }
             }
         },
@@ -63,18 +67,35 @@ fun MainScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
-                NavigationBar {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 8.dp
+                ) {
                     NavigationBarItem(
                         icon = { Icon(painterResource(R.drawable.ic_feed), contentDescription = null) },
-                        label = { Text("Feed") },
+                        label = { Text(stringResource(R.string.feed)) },
                         selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 }
+                        onClick = { selectedTab = 0 },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     )
                     NavigationBarItem(
                         icon = { Icon(painterResource(R.drawable.ic_library), contentDescription = null) },
-                        label = { Text("Biblioteca") },
+                        label = { Text(stringResource(R.string.library)) },
                         selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 }
+                        onClick = { selectedTab = 1 },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            indicatorColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     )
                 }
             }
@@ -84,8 +105,7 @@ fun MainScreen(
             when (selectedTab) {
                 0 -> FeedScreen(
                     onPickAudio = { pickAudioLauncher.launch(arrayOf("audio/*")) },
-                    onNavigateToDownload = onNavigateToDownload,
-                    onNavigateToSpotifyImport = onNavigateToSpotifyImport
+                    onNavigateToDownload = onNavigateToDownload
                 )
                 1 -> PlaylistListScreen(
                     playlistViewModel = playlistViewModel,
@@ -101,12 +121,12 @@ fun MainScreen(
     if (showCreatePlaylistDialog) {
         AlertDialog(
             onDismissRequest = { showCreatePlaylistDialog = false },
-            title = { Text("Nueva playlist") },
+            title = { Text(stringResource(R.string.new_playlist)) },
             text = {
                 OutlinedTextField(
                     value = newPlaylistName,
                     onValueChange = { newPlaylistName = it },
-                    label = { Text("Nombre") },
+                    label = { Text(stringResource(R.string.name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -122,12 +142,12 @@ fun MainScreen(
                     },
                     enabled = newPlaylistName.isNotBlank()
                 ) {
-                    Text("Crear")
+                    Text(stringResource(R.string.create))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showCreatePlaylistDialog = false }) {
-                    Text("Cancelar")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )

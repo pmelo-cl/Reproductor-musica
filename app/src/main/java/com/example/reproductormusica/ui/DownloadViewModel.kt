@@ -5,6 +5,7 @@ import android.content.Intent
 import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.reproductormusica.models.PlaylistDownloadOutcome
 import com.example.reproductormusica.models.Song
 import com.example.reproductormusica.services.DownloadService
 import kotlinx.coroutines.Dispatchers
@@ -16,6 +17,7 @@ import kotlinx.coroutines.launch
 class DownloadViewModel(application: Application) : AndroidViewModel(application) {
 
     private var downloadService: DownloadService? = null
+    private var playlistProgressLabel = false
     private val context = getApplication<Application>()
 
     private val _progress = MutableStateFlow(0f)
@@ -30,21 +32,36 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
     private val _downloadedSong = MutableStateFlow<Song?>(null)
     val downloadedSong: StateFlow<Song?> = _downloadedSong.asStateFlow()
 
-    // Callback para notificar a MainViewModel que una canción fue descargada
+    private val _downloadedPlaylistSongs = MutableStateFlow<List<Song>?>(null)
+    val downloadedPlaylistSongs: StateFlow<List<Song>?> = _downloadedPlaylistSongs.asStateFlow()
+
     var onSongDownloaded: ((Song) -> Unit)? = null
+    var onPlaylistDownloaded: ((PlaylistDownloadOutcome) -> Unit)? = null
 
     fun setDownloadService(service: DownloadService) {
         downloadService = service
         service.onDownloadProgress = { progress, _ ->
             _progress.value = progress
-            _status.value = "Descargando… ${(progress * 100).toInt()}%"
+            val pct = (progress * 100).toInt()
+            _status.value =
+                if (playlistProgressLabel) "Descargando playlist… $pct%"
+                else "Descargando… $pct%"
         }
         service.onDownloadComplete = { song ->
             _progress.value = 1f
             _status.value = "¡Descarga completada!"
             _isDownloading.value = false
+            _downloadedPlaylistSongs.value = null
             _downloadedSong.value = song
-            onSongDownloaded?.invoke(song)   // <-- Notificar a MainViewModel
+            onSongDownloaded?.invoke(song)
+        }
+        service.onPlaylistDownloadComplete = { outcome ->
+            _progress.value = 1f
+            _status.value = "¡Descarga completada: ${outcome.songs.size} canciones!"
+            _isDownloading.value = false
+            _downloadedSong.value = null
+            _downloadedPlaylistSongs.value = outcome.songs
+            onPlaylistDownloaded?.invoke(outcome)
         }
         service.onDownloadError = { error ->
             _status.value = "Error: $error"
@@ -55,7 +72,7 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun startDownload(url: String) {
+    fun startDownload(url: String, playlistMode: Boolean = false) {
         if (url.isBlank()) {
             _status.value = "La URL no puede estar vacía"
             return
@@ -67,17 +84,22 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
 
         _isDownloading.value = true
         _progress.value = 0f
-        _status.value = "Preparando descarga…"
+        playlistProgressLabel = playlistMode
+        _status.value =
+            if (playlistMode) "Preparando descarga de playlist…" else "Preparando descarga…"
         _downloadedSong.value = null
+        _downloadedPlaylistSongs.value = null
 
         val intent = Intent(context, DownloadService::class.java).apply {
             putExtra("url", url)
+            putExtra("playlist", playlistMode)
         }
         context.startService(intent)
     }
 
     fun clearDownloadedSong() {
         _downloadedSong.value = null
+        _downloadedPlaylistSongs.value = null
         _status.value = ""
         _progress.value = 0f
     }
