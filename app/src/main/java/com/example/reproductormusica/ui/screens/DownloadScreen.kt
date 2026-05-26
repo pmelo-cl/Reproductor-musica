@@ -1,11 +1,14 @@
 package com.example.reproductormusica.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -15,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.reproductormusica.R
 import com.example.reproductormusica.ui.DownloadViewModel
+import com.example.reproductormusica.utils.StreamingUrlUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,12 +30,23 @@ fun DownloadScreen(
 ) {
     var url by remember { mutableStateOf("") }
     var playlistMode by remember { mutableStateOf(false) }
+    var playlistKindIsAlbum by remember { mutableStateOf(true) }
+    var playlistOrAlbumName by remember { mutableStateOf("") }
+    var singleTrackAlbumHint by remember { mutableStateOf("") }
+
+    LaunchedEffect(url) {
+        StreamingUrlUtils.playlistInferenceFromUrl(url)?.let { playlistMode = it }
+    }
 
     val progress by viewModel.progress.collectAsState()
     val status by viewModel.status.collectAsState()
     val isDownloading by viewModel.isDownloading.collectAsState()
     val downloadedSong by viewModel.downloadedSong.collectAsState()
     val downloadedPlaylistSongs by viewModel.downloadedPlaylistSongs.collectAsState()
+
+    val effectivePlaylist = remember(url, playlistMode) {
+        StreamingUrlUtils.effectivePlaylistMode(url, playlistMode)
+    }
 
     LaunchedEffect(downloadedSong, downloadedPlaylistSongs) {
         if (downloadedSong != null || !downloadedPlaylistSongs.isNullOrEmpty()) {
@@ -55,11 +70,15 @@ fun DownloadScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (!downloadServiceReady) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 200.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
@@ -107,7 +126,7 @@ fun DownloadScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            Icons.Default.PlaylistPlay,
+                            Icons.AutoMirrored.Filled.PlaylistPlay,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(32.dp)
@@ -130,23 +149,93 @@ fun DownloadScreen(
                     Switch(
                         checked = playlistMode,
                         onCheckedChange = { playlistMode = it },
-                        enabled = !isDownloading
+                        enabled = !isDownloading &&
+                            StreamingUrlUtils.playlistInferenceFromUrl(url) == null
                     )
                 }
+            }
+
+            if (effectivePlaylist) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    stringResource(R.string.download_playlist_kind_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = playlistKindIsAlbum,
+                        onClick = { playlistKindIsAlbum = true },
+                        enabled = !isDownloading
+                    )
+                    Text(
+                        stringResource(R.string.download_kind_album),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable(enabled = !isDownloading) { playlistKindIsAlbum = true }
+                    )
+                    RadioButton(
+                        selected = !playlistKindIsAlbum,
+                        onClick = { playlistKindIsAlbum = false },
+                        enabled = !isDownloading
+                    )
+                    Text(
+                        stringResource(R.string.download_kind_playlist),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable(enabled = !isDownloading) { playlistKindIsAlbum = false }
+                    )
+                }
+                OutlinedTextField(
+                    value = playlistOrAlbumName,
+                    onValueChange = { playlistOrAlbumName = it },
+                    label = { Text(stringResource(R.string.download_playlist_name_label)) },
+                    placeholder = { Text(stringResource(R.string.download_playlist_name_placeholder)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !isDownloading
+                )
+            } else {
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = singleTrackAlbumHint,
+                    onValueChange = { singleTrackAlbumHint = it },
+                    label = { Text(stringResource(R.string.download_single_album_hint_label)) },
+                    placeholder = { Text(stringResource(R.string.download_single_album_hint_placeholder)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !isDownloading
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             val buttonLabel = when {
-                isDownloading && playlistMode -> stringResource(R.string.download_playlist_in_progress)
+                isDownloading && effectivePlaylist -> stringResource(R.string.download_playlist_in_progress)
                 isDownloading -> stringResource(R.string.download_in_progress)
-                playlistMode -> stringResource(R.string.download_audio_playlist)
+                effectivePlaylist -> stringResource(R.string.download_audio_playlist)
                 else -> stringResource(R.string.download_audio_single)
             }
 
+            val canStart = url.isNotBlank() && !isDownloading && downloadServiceReady &&
+                (!effectivePlaylist || playlistOrAlbumName.isNotBlank())
+
             Button(
-                onClick = { viewModel.startDownload(url, playlistMode) },
-                enabled = url.isNotBlank() && !isDownloading && downloadServiceReady,
+                onClick = {
+                    viewModel.startDownload(
+                        url = url,
+                        userWantsPlaylist = playlistMode,
+                        playlistDisplayName = playlistOrAlbumName,
+                        playlistIsAlbumType = playlistKindIsAlbum,
+                        singleTrackAlbumHint = singleTrackAlbumHint
+                    )
+                },
+                enabled = canStart,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(Icons.Default.Download, contentDescription = null)
@@ -245,7 +334,7 @@ fun DownloadScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Card(
                 modifier = Modifier.fillMaxWidth(),

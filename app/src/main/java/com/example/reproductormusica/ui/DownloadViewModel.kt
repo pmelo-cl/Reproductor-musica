@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.reproductormusica.models.PlaylistDownloadOutcome
 import com.example.reproductormusica.models.Song
 import com.example.reproductormusica.services.DownloadService
+import com.example.reproductormusica.utils.StreamingUrlUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -72,7 +73,13 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
-    fun startDownload(url: String, playlistMode: Boolean = false) {
+    fun startDownload(
+        url: String,
+        userWantsPlaylist: Boolean,
+        playlistDisplayName: String,
+        playlistIsAlbumType: Boolean,
+        singleTrackAlbumHint: String
+    ) {
         if (url.isBlank()) {
             _status.value = "La URL no puede estar vacía"
             return
@@ -82,17 +89,33 @@ class DownloadViewModel(application: Application) : AndroidViewModel(application
             return
         }
 
+        val effectivePlaylist = StreamingUrlUtils.effectivePlaylistMode(url, userWantsPlaylist)
+
+        if (effectivePlaylist && playlistDisplayName.isBlank()) {
+            _status.value = "Escribe un nombre para la playlist o el álbum"
+            return
+        }
+
         _isDownloading.value = true
         _progress.value = 0f
-        playlistProgressLabel = playlistMode
+        playlistProgressLabel = effectivePlaylist
         _status.value =
-            if (playlistMode) "Preparando descarga de playlist…" else "Preparando descarga…"
+            if (effectivePlaylist) "Preparando descarga de playlist…" else "Preparando descarga…"
         _downloadedSong.value = null
         _downloadedPlaylistSongs.value = null
 
         val intent = Intent(context, DownloadService::class.java).apply {
             putExtra("url", url)
-            putExtra("playlist", playlistMode)
+            putExtra("playlist", effectivePlaylist)
+            if (effectivePlaylist) {
+                putExtra("user_playlist_name", playlistDisplayName.trim())
+                putExtra("playlist_as_album_metadata", playlistIsAlbumType)
+            } else {
+                putExtra(
+                    "single_album_hint",
+                    singleTrackAlbumHint.trim().takeIf { it.isNotEmpty() }
+                )
+            }
         }
         context.startService(intent)
     }

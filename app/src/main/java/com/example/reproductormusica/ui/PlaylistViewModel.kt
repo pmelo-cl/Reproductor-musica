@@ -74,10 +74,15 @@ class PlaylistViewModel(application: Application) : AndroidViewModel(application
         default?.let { repository.addSongToPlaylist(it.id, songId) }
     }
 
-    fun createPlaylistFromDownload(songs: List<Song>, titleHint: String?) {
+    fun createPlaylistFromDownload(
+        songs: List<Song>,
+        titleHint: String?,
+        userPreferredName: String? = null
+    ) {
         if (songs.isEmpty()) return
         viewModelScope.launch {
-            repository.createPlaylistWithSongsFromDownload(titleHint, songs.map { it.id })
+            val name = userPreferredName?.trim()?.takeIf { it.isNotBlank() } ?: titleHint
+            repository.createPlaylistWithSongsFromDownload(name, songs.map { it.id })
         }
     }
 

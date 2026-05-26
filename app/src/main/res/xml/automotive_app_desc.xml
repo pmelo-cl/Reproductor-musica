@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Descriptor requerido por Android Auto.
+    Debe estar en res/xml/automotive_app_desc.xml
+    Declara que esta app provee contenido de tipo "media".
+-->
+<automotiveApp>
+    <uses name="media" />
+</automotiveApp>

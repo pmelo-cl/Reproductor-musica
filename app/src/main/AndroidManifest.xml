@@ -16,6 +16,11 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Android Auto: declara que la app es compatible (no obligatorio tener hardware) -->
+    <uses-feature
+        android:name="android.hardware.type.automotive"
+        android:required="false" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -26,6 +31,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.ReproductorMusica"
         android:requestLegacyExternalStorage="true">
+
+        <!-- Android Auto: apunta al descriptor XML -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
 
         <activity
             android:name=".ui.MainActivity"
@@ -38,10 +48,21 @@
             </intent-filter>
         </activity>
 
+        <!--
+            MusicService ahora es MediaLibraryService.
+            • exported="true" es obligatorio para que Android Auto pueda conectarse.
+            • Se declaran los dos intent-filter: Media3 Session y el legacy MediaBrowserService
+              para compatibilidad con versiones anteriores de Android Auto.
+        -->
         <service
             android:name=".services.MusicService"
             android:foregroundServiceType="mediaPlayback"
-            android:exported="false" />
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaLibraryService" />
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
 
         <service
             android:name=".services.DownloadService"

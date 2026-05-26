@@ -28,7 +28,12 @@ fun MainScreen(
     playlistViewModel: PlaylistViewModel,
     onNavigateToPlayer: () -> Unit,
     onNavigateToDownload: () -> Unit,
-    onNavigateToPlaylistDetail: (Long) -> Unit
+    onNavigateToPlaylistDetail: (Long) -> Unit,
+    onNavigateToAlbum: (String, String) -> Unit,
+    onNavigateToArtist: (String) -> Unit,
+    onNavigateToAllPlaylists: () -> Unit,
+    onNavigateToAllAlbums: () -> Unit,
+    onNavigateToAllArtists: () -> Unit
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     val currentSong by viewModel.currentSong.collectAsState()
@@ -104,13 +109,23 @@ fun MainScreen(
         Box(modifier = Modifier.padding(paddingValues)) {
             when (selectedTab) {
                 0 -> FeedScreen(
+                    mainViewModel = viewModel,
+                    playlistViewModel = playlistViewModel,
+                    onNavigateToPlaylist = onNavigateToPlaylistDetail,
+                    onNavigateToAlbum = onNavigateToAlbum,
+                    onNavigateToArtist = onNavigateToArtist,
                     onPickAudio = { pickAudioLauncher.launch(arrayOf("audio/*")) },
                     onNavigateToDownload = onNavigateToDownload
                 )
-                1 -> PlaylistListScreen(
-                    playlistViewModel = playlistViewModel,
+                1 -> LibraryScreen(
                     mainViewModel = viewModel,
+                    playlistViewModel = playlistViewModel,
                     onNavigateToPlaylist = onNavigateToPlaylistDetail,
+                    onNavigateToAlbum = onNavigateToAlbum,
+                    onNavigateToArtist = onNavigateToArtist,
+                    onNavigateToAllPlaylists = onNavigateToAllPlaylists,
+                    onNavigateToAllAlbums = onNavigateToAllAlbums,
+                    onNavigateToAllArtists = onNavigateToAllArtists,
                     onPickAudio = { pickAudioLauncher.launch(arrayOf("audio/*")) },
                     onNavigateToDownload = onNavigateToDownload
                 )

@@ -21,22 +21,32 @@ class MusicRepository(
     private val songDao: SongDao,
     private val contentResolver: ContentResolver
 ) {
+    private lateinit var albumRepository: AlbumRepository
+    private lateinit var artistRepository: ArtistRepository
+
+    fun setAlbumAndArtistRepos(albumRepo: AlbumRepository, artistRepo: ArtistRepository) {
+        albumRepository = albumRepo
+        artistRepository = artistRepo
+    }
+
     fun getAllSongs(): Flow<List<Song>> = songDao.getAllSongs()
 
-    suspend fun addSongFromUri(uri: Uri, context: Context): Long {
+    suspend fun addSongFromUri(uri: Uri, context: Context, skipPermissionRequest: Boolean = false): Long {
         return withContext(Dispatchers.IO) {
             val existing = songDao.getSongByUri(uri.toString())
             if (existing != null) {
                 return@withContext -1L
             }
 
-            try {
-                contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-            } catch (e: SecurityException) {
-                e.printStackTrace()
+            if (!skipPermissionRequest) {
+                try {
+                    contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                } catch (e: SecurityException) {
+                    e.printStackTrace()
+                }
             }
 
             val retriever = MediaMetadataRetriever()
@@ -71,12 +81,18 @@ class MusicRepository(
                 if (insertId == -1L) return@withContext -1L
 
                 val current = song.copy(id = insertId)
+
+                // Actualizar álbumes y artistas
+                if (::albumRepository.isInitialized && ::artistRepository.isInitialized) {
+                    updateAlbumsAndArtists(current)
+                }
+
                 val shouldFetchOnline = isNetworkAvailable(context) && (
-                    albumArtUri == null ||
-                    album.isNullOrBlank() ||
-                    artist == "Artista desconocido" ||
-                    artist == "Desconocido"
-                )
+                        albumArtUri == null ||
+                                album.isNullOrBlank() ||
+                                artist == "Artista desconocido" ||
+                                artist == "Desconocido"
+                        )
                 if (shouldFetchOnline) {
                     try {
                         val meta = MetadataFetcher.getInstance(context).fetchTrackMetadata(title, artist, album)
@@ -88,6 +104,9 @@ class MusicRepository(
                             )
                             if (updated != current) {
                                 songDao.update(updated)
+                                if (::albumRepository.isInitialized && ::artistRepository.isInitialized) {
+                                    updateAlbumsAndArtists(updated)
+                                }
                             }
                         }
                     } catch (e: Exception) {
@@ -107,6 +126,15 @@ class MusicRepository(
             } finally {
                 retriever.release()
             }
+        }
+    }
+
+    private suspend fun updateAlbumsAndArtists(song: Song) {
+        if (song.artist.isNotBlank() && song.artist != "Artista desconocido" && song.artist != "Desconocido") {
+            artistRepository.getOrCreateArtist(song.artist, song.albumArtUriString)
+        }
+        if (song.album != null && song.artist.isNotBlank()) {
+            albumRepository.getOrCreateAlbum(song.album, song.artist, song.albumArtUriString)
         }
     }
 
