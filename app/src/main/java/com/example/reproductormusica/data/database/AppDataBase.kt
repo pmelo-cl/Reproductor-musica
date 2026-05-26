@@ -5,25 +5,19 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import android.content.Context
-import com.example.reproductormusica.models.*
+import com.example.reproductormusica.models.Playlist
+import com.example.reproductormusica.models.PlaylistSongCrossRef
+import com.example.reproductormusica.models.Song
 
 @Database(
-    entities = [
-        Song::class,
-        Playlist::class,
-        PlaylistSongCrossRef::class,
-        Album::class,
-        Artist::class
-    ],
-    version = 4,
+    entities = [Song::class, Playlist::class, PlaylistSongCrossRef::class],
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun songDao(): SongDao
     abstract fun playlistDao(): PlaylistDao
-    abstract fun albumDao(): AlbumDao
-    abstract fun artistDao(): ArtistDao
 
     companion object {
         @Volatile
@@ -36,7 +30,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "music_database"
                 )
-                    .fallbackToDestructiveMigration() // Destruye y recrea en cambios de versión
+                    .fallbackToDestructiveMigration(false)
                     .build()
                 INSTANCE = instance
                 instance

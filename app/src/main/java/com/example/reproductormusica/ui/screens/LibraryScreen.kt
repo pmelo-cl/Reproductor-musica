@@ -1,338 +1,200 @@
 package com.example.reproductormusica.ui.screens
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import com.example.reproductormusica.R
-import com.example.reproductormusica.models.Album
-import com.example.reproductormusica.models.Artist
-import com.example.reproductormusica.models.PlaylistWithSongs
 import com.example.reproductormusica.models.Song
 import com.example.reproductormusica.ui.MainViewModel
-import com.example.reproductormusica.ui.PlaylistViewModel
+import com.example.reproductormusica.ui.components.SongListItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LibraryScreen(
-    mainViewModel: MainViewModel,
-    playlistViewModel: PlaylistViewModel,
-    onNavigateToPlaylist: (Long) -> Unit,
-    onNavigateToAlbum: (String, String) -> Unit,
-    onNavigateToArtist: (String) -> Unit,
-    onNavigateToAllPlaylists: () -> Unit,
-    onNavigateToAllAlbums: () -> Unit,
-    onNavigateToAllArtists: () -> Unit,
-    onPickAudio: () -> Unit,
+    viewModel: MainViewModel,
+    onNavigateToPlayer: () -> Unit,
     onNavigateToDownload: () -> Unit
 ) {
-    val playlistsWithSongs by playlistViewModel.playlistsWithSongs.collectAsState()
-    val albums by mainViewModel.albums.collectAsState()
-    val artists by mainViewModel.artists.collectAsState()
+    val songs by viewModel.songs.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
 
-    val defaultPlaylist = playlistsWithSongs.find { it.playlist.name == "Canciones disponibles" }
-    val userPlaylists = playlistsWithSongs.filter { it.playlist.name != "Canciones disponibles" }
+    var searchActive by remember { mutableStateOf(false) }
+    var songForArtChange by remember { mutableStateOf<Song?>(null) }
+    var songForDelete by remember { mutableStateOf<Song?>(null) }
+    var songForEdit by remember { mutableStateOf<Song?>(null) }
+    var editTitle by remember { mutableStateOf("") }
+    var editArtist by remember { mutableStateOf("") }
+
+    val currentSong by viewModel.currentSong.collectAsState()
+
+    LaunchedEffect(songForEdit) {
+        songForEdit?.let {
+            editTitle = it.title
+            editArtist = it.artist
+        }
+    }
+
+    val pickAudioLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? -> uri?.let { viewModel.addSongFromUri(it) } }
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri?.let { artUri ->
+            songForArtChange?.let { song -> viewModel.updateSongAlbumArt(song, artUri) }
+        }
+        songForArtChange = null
+    }
+
+    LaunchedEffect(songForArtChange) {
+        songForArtChange?.let { imagePickerLauncher.launch(arrayOf("image/*")) }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Biblioteca") },
-                actions = {
-                    IconButton(onClick = onPickAudio) {
-                        Icon(Icons.Default.Add, "Añadir")
+                title = {
+                    if (searchActive) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { viewModel.setSearchQuery(it) },
+                            placeholder = { Text("Buscar…") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            ),
+                            trailingIcon = {
+                                if (searchQuery.isNotEmpty()) {
+                                    IconButton(onClick = { viewModel.setSearchQuery("") }) {
+                                        Icon(Icons.Default.Clear, "Limpiar")
+                                    }
+                                }
+                            }
+                        )
+                    } else {
+                        Text("Biblioteca")
                     }
-                    IconButton(onClick = onNavigateToDownload) {
-                        Icon(Icons.Default.Download, "Descargar")
+                },
+                actions = {
+                    if (searchActive) {
+                        IconButton(onClick = {
+                            searchActive = false
+                            viewModel.setSearchQuery("")
+                        }) {
+                            Icon(Icons.Default.Clear, "Cerrar búsqueda")
+                        }
+                    } else {
+                        IconButton(onClick = { searchActive = true }) {
+                            Icon(Icons.Default.Search, "Buscar")
+                        }
+                        IconButton(onClick = { pickAudioLauncher.launch(arrayOf("audio/*")) }) {
+                            Icon(Icons.Default.Add, "Añadir canción")
+                        }
+                        IconButton(onClick = onNavigateToDownload) {
+                            Icon(Icons.Default.Download, "Descargar música")
+                        }
                     }
                 }
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(vertical = 8.dp)
-        ) {
-            // 1. Canciones disponibles
-            defaultPlaylist?.let { playlistWithSongs ->
-                SectionHeader(
-                    title = "Canciones disponibles",
-                    subtitle = "${playlistWithSongs.songs.size} canciones",
-                    onSeeAll = { onNavigateToPlaylist(playlistWithSongs.playlist.id) }
-                )
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp)
-                ) {
-                    items(playlistWithSongs.songs.take(10)) { song ->
-                        SongGridItem(
-                            song = song,
-                            onClick = {
-                                mainViewModel.playFromQueue(
-                                    playlistWithSongs.playlist.id,
-                                    playlistWithSongs.songs,
-                                    song
-                                )
-                            }
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // 2. Playlists
-            if (userPlaylists.isNotEmpty()) {
-                SectionHeader(
-                    title = "Playlists",
-                    subtitle = "${userPlaylists.size}",
-                    onSeeAll = onNavigateToAllPlaylists
-                )
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp)
-                ) {
-                    items(userPlaylists.take(6)) { pw ->
-                        PlaylistGridItem(
-                            playlistWithSongs = pw,
-                            onClick = { onNavigateToPlaylist(pw.playlist.id) }
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // 3. Álbumes
-            if (albums.isNotEmpty()) {
-                SectionHeader(
-                    title = "Álbumes",
-                    subtitle = "${albums.size}",
-                    onSeeAll = onNavigateToAllAlbums
-                )
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp)
-                ) {
-                    items(albums.take(6)) { album ->
-                        AlbumGridItem(
-                            album = album,
-                            onClick = { onNavigateToAlbum(album.name, album.artist) }
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // 4. Artistas
-            if (artists.isNotEmpty()) {
-                SectionHeader(
-                    title = "Artistas",
-                    subtitle = "${artists.size}",
-                    onSeeAll = onNavigateToAllArtists
-                )
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(horizontal = 16.dp)
-                ) {
-                    items(artists.take(6)) { artist ->
-                        ArtistGridItem(
-                            artist = artist,
-                            onClick = { onNavigateToArtist(artist.name) }
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SectionHeader(title: String, subtitle: String, onSeeAll: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        TextButton(onClick = onSeeAll) {
-            Text("Ver todo")
-        }
-    }
-}
-
-@Composable
-private fun SongGridItem(song: Song, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .width(120.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Column {
+        if (songs.isEmpty()) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(8.dp))
-            ) {
-                if (song.albumArtUri != null) {
-                    AsyncImage(
-                        model = song.albumArtUri,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Image(
-                        painter = painterResource(R.drawable.ic_default_album),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-            }
-            Column(modifier = Modifier.padding(8.dp)) {
-                Text(song.title, maxLines = 1, style = MaterialTheme.typography.bodyMedium, overflow = TextOverflow.Ellipsis)
-                Text(song.artist, maxLines = 1, style = MaterialTheme.typography.bodySmall, overflow = TextOverflow.Ellipsis)
-            }
-        }
-    }
-}
-
-@Composable
-private fun PlaylistGridItem(playlistWithSongs: PlaylistWithSongs, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .width(140.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Column {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(8.dp)),
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                if (playlistWithSongs.playlist.coverUriString != null) {
-                    AsyncImage(
-                        model = playlistWithSongs.playlist.coverUriString,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Icon(
-                        Icons.Default.QueueMusic,
-                        contentDescription = null,
-                        modifier = Modifier.size(48.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("No hay canciones", style = MaterialTheme.typography.bodyLarge)
+                    Spacer(Modifier.height(16.dp))
+                    Button(onClick = { pickAudioLauncher.launch(arrayOf("audio/*")) }) {
+                        Text("Añadir canción")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Button(onClick = onNavigateToDownload) { Text("Descargar música") }
                 }
             }
-            Column(modifier = Modifier.padding(8.dp)) {
-                Text(playlistWithSongs.playlist.name, maxLines = 1, style = MaterialTheme.typography.bodyMedium, overflow = TextOverflow.Ellipsis)
-                Text("${playlistWithSongs.songs.size} canciones", maxLines = 1, style = MaterialTheme.typography.bodySmall)
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(paddingValues),
+                contentPadding = PaddingValues(bottom = 8.dp)
+            ) {
+                items(songs, key = { it.id }) { song ->
+                    SongListItem(
+                        song = song,
+                        isCurrentSong = song.id == currentSong?.id,
+                        onPlay = { viewModel.playSong(song) },
+                        onChangeAlbumArt = { songForArtChange = song },
+                        onDelete = { songForDelete = song },
+                        onEditInfo = { songForEdit = song }
+                    )
+                }
             }
         }
     }
-}
 
-@Composable
-private fun AlbumGridItem(album: Album, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .width(140.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Column {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(1f)
-                    .clip(RoundedCornerShape(8.dp))
-            ) {
-                if (album.coverUriString != null) {
-                    AsyncImage(
-                        model = album.coverUriString,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Image(
-                        painter = painterResource(R.drawable.ic_default_album),
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
+    songForDelete?.let { song ->
+        AlertDialog(
+            onDismissRequest = { songForDelete = null },
+            title = { Text("Eliminar canción") },
+            text = { Text("¿Seguro que quieres eliminar '${song.title}'?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.deleteSong(song)
+                    songForDelete = null
+                }) { Text("Eliminar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { songForDelete = null }) { Text("Cancelar") }
             }
-            Column(modifier = Modifier.padding(8.dp)) {
-                Text(album.name, maxLines = 1, style = MaterialTheme.typography.bodyMedium, overflow = TextOverflow.Ellipsis)
-                Text(album.artist, maxLines = 1, style = MaterialTheme.typography.bodySmall, overflow = TextOverflow.Ellipsis)
-            }
-        }
+        )
     }
-}
 
-@Composable
-private fun ArtistGridItem(artist: Artist, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .width(120.dp)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(
-                modifier = Modifier
-                    .size(100.dp)
-                    .padding(8.dp)
-                    .clip(RoundedCornerShape(50.dp))
-            ) {
-                if (artist.coverUriString != null) {
-                    AsyncImage(
-                        model = artist.coverUriString,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+    songForEdit?.let { song ->
+        AlertDialog(
+            onDismissRequest = { songForEdit = null },
+            title = { Text("Editar información") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = editTitle,
+                        onValueChange = { editTitle = it },
+                        label = { Text("Título") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
-                } else {
-                    Icon(
-                        Icons.Default.Person,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        tint = MaterialTheme.colorScheme.primary
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = editArtist,
+                        onValueChange = { editArtist = it },
+                        label = { Text("Artista") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (editTitle.isNotBlank()) viewModel.updateSongInfo(song, editTitle, editArtist)
+                    songForEdit = null
+                }) { Text("Guardar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { songForEdit = null }) { Text("Cancelar") }
             }
-            Text(artist.name, maxLines = 1, style = MaterialTheme.typography.bodyMedium, overflow = TextOverflow.Ellipsis)
-            Spacer(modifier = Modifier.height(4.dp))
-        }
+        )
     }
 }

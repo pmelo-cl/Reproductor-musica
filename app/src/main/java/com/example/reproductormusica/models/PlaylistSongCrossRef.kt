@@ -9,6 +9,5 @@ import androidx.room.Entity
 data class PlaylistSongCrossRef(
     val playlistId: Long,
     val songId: Long,
-    val position: Int = 0,          // Campo de orden
     val addedAt: Long = System.currentTimeMillis()
 )

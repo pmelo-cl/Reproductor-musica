@@ -1,116 +1,45 @@
 <resources>
-    <!-- Nombre de la app -->
-    <string name="app_name">love U</string>
-
-    <!-- Pantallas principales -->
-    <string name="feed">Feed</string>
+    <string name="app_name">Love U</string>
+    <string name="notification_channel_name">Reproducción de música</string>
+    <string name="play">Reproducir</string>
+    <string name="pause">Pausar</string>
+    <string name="next">Siguiente</string>
+    <string name="previous">Anterior</string>
+    <string name="stop">Detener</string>
+    <string name="unknown_artist">Artista desconocido</string>
+    <string name="feed">Inicio</string>
     <string name="library">Biblioteca</string>
-    <string name="player">Reproductor</string>
-    <string name="settings">Ajustes</string>
-    <string name="name">Nombre</string>
-
-    <!-- Feed -->
-    <string name="music_organized">Tu música organizada</string>
-    <string name="import_create_playlists">Importa canciones y crea playlists personalizadas</string>
-    <string name="import_songs">Importar canciones</string>
-    <string name="download_new_tracks">Descargar nuevas pistas</string>
-    <string name="open_downloads">Abrir descargas</string>
-    <string name="recent_playlists">Playlists recientes</string>
-    <string name="recent_albums">Álbumes recientes</string>
-    <string name="recent_artists">Artistas recientes</string>
-
-    <!-- Biblioteca -->
-    <string name="all_playlists">Todas las playlists</string>
-    <string name="all_albums">Todos los álbumes</string>
-    <string name="all_artists">Todos los artistas</string>
-    <string name="songs_count">%1$d canciones</string>
-    <string name="no_playlists">No hay playlists</string>
-    <string name="no_albums">No hay álbumes</string>
-    <string name="no_artists">No hay artistas</string>
-    <string name="no_songs">No hay canciones</string>
-
-    <!-- Playlist -->
     <string name="new_playlist">Nueva playlist</string>
-    <string name="playlist_name">Nombre de la playlist</string>
+    <string name="name">Nombre</string>
     <string name="create">Crear</string>
-    <string name="rename">Renombrar</string>
-    <string name="delete">Eliminar</string>
-    <string name="add_songs">Añadir canciones</string>
-    <string name="remove_from_playlist">Quitar de la playlist</string>
-    <string name="delete_playlist_confirmation">¿Eliminar \'%1$s\'? Las canciones no se borrarán.</string>
-
-    <!-- Álbum -->
-    <string name="album">Álbum</string>
-    <string name="artist">Artista</string>
-
-    <!-- Descarga -->
+    <string name="cancel">Cancelar</string>
+    <string name="add_song">Añadir canción</string>
     <string name="download_music">Descargar música</string>
-    <string name="download_paste_url_hint">Pega un enlace de YouTube, SoundCloud o Bandcamp</string>
-    <string name="download_url_label">URL del vídeo o playlist</string>
+    <string name="music_organized">Tu música, mejor organizada</string>
+    <string name="import_create_playlists">Importa canciones, crea playlists y disfruta de la pirateria.</string>
+    <string name="import_songs">Importar canciones</string>
+    <string name="download_new_tracks">Descarga nuevas pistas</string>
+    <string name="open_downloads">Abrir descargas</string>
+    <string name="download_paste_url_hint">Pega la URL de YouTube, SoundCloud u otro sitio compatible</string>
+    <string name="download_url_label">URL del video o lista</string>
     <string name="download_url_placeholder">https://…</string>
-    <string name="download_playlist_mode_title">Modo playlist</string>
-    <string name="download_playlist_mode_subtitle">Descargar todas las canciones de la lista</string>
-    <string name="download_playlist_kind_title">Tipo de contenido</string>
-    <string name="download_kind_album">Álbum</string>
-    <string name="download_kind_playlist">Playlist</string>
-    <string name="download_playlist_name_label">Nombre de la playlist/álbum</string>
-    <string name="download_playlist_name_placeholder">Ej. Mis favoritos</string>
-    <string name="download_single_album_hint_label">Álbum (opcional)</string>
-    <string name="download_single_album_hint_placeholder">Ej. Thriller</string>
+    <string name="download_playlist_mode_title">Lista de reproducción completa</string>
+    <string name="download_playlist_mode_subtitle">Descarga todas las pistas de una playlist (yt-dlp, sin --no-playlist)</string>
     <string name="download_audio_single">Descargar audio</string>
     <string name="download_audio_playlist">Descargar playlist</string>
     <string name="download_in_progress">Descargando…</string>
     <string name="download_playlist_in_progress">Descargando playlist…</string>
     <string name="download_completed_one">¡Descarga completada!</string>
     <string name="download_completed_many">¡Playlist descargada!</string>
-    <string name="download_tracks_added">%1$d canciones añadidas</string>
+    <string name="download_tracks_added">%1$d canciones añadidas a la biblioteca</string>
     <string name="download_another">Descargar otra</string>
-    <string name="download_info_title">Formatos compatibles</string>
-    <string name="download_info_body">YouTube, SoundCloud, Bandcamp y más. Se descarga el mejor audio disponible.</string>
-    <string name="download_notification_single_subtitle">%1$s añadida a la biblioteca</string>
-    <string name="download_notification_playlist_subtitle">%1$d canciones añadidas</string>
-    <string name="download_notification_complete_title">Descarga completada</string>
+    <string name="download_info_title">Información</string>
+    <string name="download_info_body">El audio se guarda en la carpeta de la app en formato compatible (p. ej. M4A). Con el modo playlist, cada pista se añade por separado.</string>
+    <string name="download_notification_complete_title">Descarga finalizada</string>
+    <string name="download_notification_single_subtitle">%1$s</string>
+    <string name="download_notification_playlist_subtitle">%1$d canciones guardadas en la biblioteca</string>
     <string name="download_notification_error_title">Error en la descarga</string>
     <string name="download_notification_channel_complete">Descargas completadas</string>
-    <string name="download_error_drm">No se puede descargar contenido protegido por DRM</string>
-    <string name="download_error_unknown">Error desconocido en la descarga</string>
-
-    <!-- Canción / Metadatos -->
-    <string name="edit_info">Editar información</string>
-    <string name="change_cover">Cambiar portada</string>
-    <string name="refresh_metadata">Actualizar metadatos</string>
-    <string name="title_label">Título</string>
-    <string name="artist_label">Artista</string>
-    <string name="save">Guardar</string>
-    <string name="cancel">Cancelar</string>
-    <string name="delete_song_confirmation">¿Eliminar \'%1$s\' de la aplicación? Esta acción no se puede deshacer.</string>
-
-    <!-- Reproductor -->
-    <string name="playing">Reproduciendo</string>
-    <string name="queue">Cola de reproducción</string>
-    <string name="shuffle">Aleatorio</string>
-    <string name="repeat">Repetir</string>
-    <string name="repeat_off">No repetir</string>
-    <string name="repeat_one">Repetir una</string>
-    <string name="repeat_all">Repetir todas</string>
-
-    <!-- Notificaciones -->
-    <string name="notification_channel_playback">Reproducción de música</string>
-    <string name="notification_play">Reproducir</string>
-    <string name="notification_pause">Pausar</string>
-    <string name="notification_next">Siguiente</string>
-    <string name="notification_previous">Anterior</string>
-
-    <!-- Opciones / Menú -->
-    <string name="search">Buscar</string>
-    <string name="add_song">Añadir canción</string>
-    <string name="view_all">Ver todo</string>
-    <string name="options">Opciones</string>
-
-    <!-- MusicBrainz -->
-    <string name="musicbrainz_user_agent">ReproductorMusica/1.0 (tu-email@example.com)</string>
-
-    <!-- Errores genéricos -->
-    <string name="error">Error</string>
-    <string name="ok">OK</string>
+    <!-- MusicBrainz exige User-Agent con app + contacto: cambia el correo si publicas la app. -->
+    <string name="musicbrainz_user_agent">LoveU/1.0 (noreply@example.com)</string>
 </resources>

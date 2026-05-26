@@ -2,20 +2,13 @@ package com.example.reproductormusica.ui
 
 import android.app.Application
 import android.net.Uri
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.reproductormusica.data.database.AppDatabase
-import com.example.reproductormusica.data.repository.AlbumRepository
-import com.example.reproductormusica.data.repository.ArtistRepository
 import com.example.reproductormusica.data.repository.MusicRepository
-import com.example.reproductormusica.models.Album
-import com.example.reproductormusica.models.Artist
 import com.example.reproductormusica.models.Song
 import com.example.reproductormusica.services.MusicService
 import com.example.reproductormusica.utils.advancedMatch
-import androidx.media3.common.Player
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -27,12 +20,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         contentResolver = application.contentResolver
     )
 
-    private val albumRepository = AlbumRepository(database.albumDao())
-    private val artistRepository = ArtistRepository(database.artistDao())
-
-    init {
-        repository.setAlbumAndArtistRepos(albumRepository, artistRepository)
-    }
+    private val playlistViewModel: PlaylistViewModel by lazy { PlaylistViewModel(application) }
 
     private var musicService: MusicService? = null
 
@@ -64,19 +52,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _playingPlaylistId = MutableStateFlow<Long?>(null)
     val playingPlaylistId: StateFlow<Long?> = _playingPlaylistId.asStateFlow()
 
-    private val _repeatMode = MutableStateFlow(Player.REPEAT_MODE_OFF)
-    val repeatMode: StateFlow<Int> = _repeatMode.asStateFlow()
-
-    private val _shuffleEnabled = MutableStateFlow(false)
-    val shuffleEnabled: StateFlow<Boolean> = _shuffleEnabled.asStateFlow()
-
-    // Álbumes y artistas
-    val albums: StateFlow<List<Album>> = albumRepository.getAllAlbums()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-
-    val artists: StateFlow<List<Artist>> = artistRepository.getAllArtists()
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
-
     init {
         loadSongs()
         viewModelScope.launch {
@@ -95,14 +70,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setMusicService(service: MusicService) {
         musicService = service
-        _repeatMode.value = service.getRepeatMode()
-        _shuffleEnabled.value = service.getShuffleEnabled()
         service.onPlaybackStateChanged = { playing -> _isPlaying.value = playing }
         service.onSongChanged = { song -> _currentSong.value = song }
-        // Solo establecer cola si no tiene ya
-        if (!service.hasQueue()) {
-            service.setQueue(_allSongs.value)
-        }
+        service.setQueue(_allSongs.value)
     }
 
     fun setQueue(songs: List<Song>) {
@@ -118,38 +88,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun playSong(song: Song) {
-        musicService?.playSong(song)
-    }
-
-    fun playFromQueue(playlistId: Long?, queue: List<Song>, start: Song) {
-        if (queue.isEmpty()) return
-        _playingPlaylistId.value = playlistId
-        setQueue(queue)
-        playSong(start)
-    }
-
+    fun playSong(song: Song) { musicService?.playSong(song) }
     fun playPause()          { musicService?.playPause() }
     fun playNext()           { musicService?.playNext() }
-    @RequiresApi(Build.VERSION_CODES.VANILLA_ICE_CREAM)
     fun playPrevious()       { musicService?.playPrevious() }
     fun seekTo(position: Long) { musicService?.seekTo(position) }
 
-    fun setRepeatMode(mode: Int) {
-        musicService?.setRepeatMode(mode)
-        _repeatMode.value = mode
-    }
-
-    fun setShuffleMode(enabled: Boolean) {
-        musicService?.setShuffleMode(enabled)
-        _shuffleEnabled.value = enabled
-    }
+    fun setRepeatMode(mode: Int) { musicService?.setRepeatMode(mode) }
+    fun setShuffleMode(enabled: Boolean) { musicService?.setShuffleMode(enabled) }
 
     fun addSongFromUri(uri: Uri) {
         viewModelScope.launch {
             val songId = repository.addSongFromUri(uri, getApplication())
             if (songId > 0) {
-                // Notificar al PlaylistViewModel (se hace externamente)
+                playlistViewModel.addSongToDefaultPlaylist(songId)
             }
         }
     }
@@ -162,7 +114,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _isPlaying.value = false
             }
             repository.deleteSong(song)
-            // Notificar limpieza de playlist por defecto (externo)
+            playlistViewModel.cleanupDefaultPlaylistIfEmpty()
         }
     }
 
@@ -194,23 +146,5 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun stopPlaylist() {
         _playingPlaylistId.value = null
-    }
-
-    // Métodos para obtener canciones de álbum/artista
-    fun getSongsFromAlbum(albumName: String, artist: String): Flow<List<Song>> =
-        albumRepository.getSongsFromAlbum(albumName, artist)
-
-    fun getSongsFromArtist(artistName: String): Flow<List<Song>> =
-        artistRepository.getSongsFromArtist(artistName)
-
-    fun updateAlbumsAndArtists(song: Song) {
-        viewModelScope.launch {
-            if (song.artist.isNotBlank() && song.artist != "Artista desconocido" && song.artist != "Desconocido") {
-                artistRepository.getOrCreateArtist(song.artist, song.albumArtUriString)
-            }
-            if (song.album != null && song.artist.isNotBlank()) {
-                albumRepository.getOrCreateAlbum(song.album, song.artist, song.albumArtUriString)
-            }
-        }
     }
 }

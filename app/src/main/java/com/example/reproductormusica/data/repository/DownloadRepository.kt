@@ -1,4 +1,4 @@
-package com.example.reproductormusica.data.repository
+package com.example.reproductormusica.data.download
 
 import android.content.Context
 import android.media.MediaMetadataRetriever
@@ -43,11 +43,7 @@ class DownloadRepository(
         }
     }
 
-    private val audioExtensions =
-        arrayOf("m4a", "mp4", "webm", "opus", "mp3", "ogg", "oga")
-
-    private val audioFormatSelector =
-        "bestaudio[ext=m4a]/bestaudio[ext=mp3]/bestaudio/best"
+    private val audioExtensions = arrayOf("m4a", "mp4", "webm", "opus")
 
     private data class ParsedTrackTags(
         val title: String,
@@ -244,8 +240,7 @@ class DownloadRepository(
 
     suspend fun downloadAudioFromUrl(
         url: String,
-        onProgress: (Float, String) -> Unit,
-        metadataAlbumHint: String? = null
+        onProgress: (Float, String) -> Unit
     ): Result<Song> = withContext(Dispatchers.IO) {
         try {
             initYoutubeDl()
@@ -270,7 +265,7 @@ class DownloadRepository(
 
             val request = YoutubeDLRequest(url)
             request.addOption("-o", outputTemplate)
-            request.addOption("-f", audioFormatSelector)
+            request.addOption("-f", "bestaudio[ext=m4a]/bestaudio/best")
             request.addOption("--no-playlist")
             request.addOption("--force-ipv4")
 
@@ -296,11 +291,10 @@ class DownloadRepository(
                     tags.artist,
                     artist
                 )
-                val albumForMeta = metadataAlbumHint?.trim()?.takeIf { it.isNotBlank() } ?: tags.album
                 val (albumArtUri, album, mbArtist) = applyOnlineMetadata(
                     refTitle,
                     refArtist,
-                    albumForMeta,
+                    tags.album,
                     tags.embeddedArtUri
                 )
                 val finalArtist = (mbArtist ?: refArtist).ifBlank { artist }
@@ -329,10 +323,7 @@ class DownloadRepository(
      */
     suspend fun downloadPlaylistFromUrl(
         url: String,
-        onProgress: (Float, String) -> Unit,
-        userPlaylistName: String? = null,
-        playlistAsAlbumMetadata: Boolean = false,
-        playlistMetadataAlbumName: String? = null
+        onProgress: (Float, String) -> Unit
     ): Result<PlaylistDownloadOutcome> = withContext(Dispatchers.IO) {
         try {
             initYoutubeDl()
@@ -364,8 +355,9 @@ class DownloadRepository(
             val outputTemplate = "$downloadDir/%(playlist_index)03d - %(title)s.%(ext)s"
             val request = YoutubeDLRequest(url)
             request.addOption("-o", outputTemplate)
-            request.addOption("-f", audioFormatSelector)
+            request.addOption("-f", "bestaudio[ext=m4a]/bestaudio/best")
             request.addOption("--force-ipv4")
+
 
             val playlistProgress = PlaylistProgressAggregator()
             YoutubeDL.getInstance().execute(
@@ -388,7 +380,6 @@ class DownloadRepository(
                 )
             }
 
-            val forcedAlbum = playlistMetadataAlbumName?.trim()?.takeIf { it.isNotBlank() }
             val songs = mutableListOf<Song>()
             for (file in newFiles) {
                 val fallbackTitle = parseTitleFromPlaylistOutputFile(file.name)
@@ -399,15 +390,10 @@ class DownloadRepository(
                     tags.artist,
                     defaultArtist
                 )
-                val albumForMeta = if (playlistAsAlbumMetadata && forcedAlbum != null) {
-                    forcedAlbum
-                } else {
-                    tags.album
-                }
                 val (albumArtUri, album, mbArtist) = applyOnlineMetadata(
                     refTitle,
                     refArtist,
-                    albumForMeta,
+                    tags.album,
                     tags.embeddedArtUri
                 )
                 val finalArtist = (mbArtist ?: refArtist).ifBlank { defaultArtist }
@@ -430,14 +416,7 @@ class DownloadRepository(
                 )
             }
 
-            val nameForPlaylist = userPlaylistName?.trim()?.takeIf { it.isNotBlank() }
-            Result.success(
-                PlaylistDownloadOutcome(
-                    songs = songs,
-                    playlistTitleHint = playlistTitleHint,
-                    userPlaylistName = nameForPlaylist
-                )
-            )
+            Result.success(PlaylistDownloadOutcome(songs, playlistTitleHint))
         } catch (e: Exception) {
             Log.e("DownloadRepo", "Playlist download error", e)
             Result.failure(e)

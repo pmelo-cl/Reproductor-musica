@@ -4,7 +4,6 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -41,7 +40,6 @@ fun PlaylistDetailScreen(
 
     val playlistWithSongs by playlistViewModel.selectedPlaylist.collectAsState()
     val allSongs by mainViewModel.allSongs.collectAsState()
-    val currentSong by mainViewModel.currentSong.collectAsState()
 
     var showAddSongsDialog by remember { mutableStateOf(false) }
     var songToRemove by remember { mutableStateOf<Song?>(null) }
@@ -133,9 +131,7 @@ fun PlaylistDetailScreen(
         floatingActionButton = {
             if (filteredSongs.isNotEmpty()) {
                 FloatingActionButton(onClick = {
-                    if (filteredSongs.isNotEmpty()) {
-                        mainViewModel.playFromQueue(playlist.id, filteredSongs, filteredSongs.first())
-                    }
+                    mainViewModel.playPlaylist(playlist.id, filteredSongs)
                 }) {
                     Icon(Icons.Default.PlayArrow, "Reproducir playlist")
                 }
@@ -207,9 +203,9 @@ fun PlaylistDetailScreen(
                     items(filteredSongs, key = { it.id }) { song ->
                         PlaylistSongRow(
                             song = song,
-                            isCurrent = song.id == currentSong?.id,
                             onPlay = {
-                                mainViewModel.playFromQueue(playlist.id, filteredSongs, song)
+                                mainViewModel.playSong(song)
+                                mainViewModel.setQueue(filteredSongs)
                             },
                             onRemove = if (isDefaultPlaylist) null else { { songToRemove = song } },
                             showOptions = true,
@@ -326,7 +322,6 @@ fun PlaylistDetailScreen(
 @Composable
 private fun PlaylistSongRow(
     song: Song,
-    isCurrent: Boolean,
     onPlay: () -> Unit,
     onRemove: (() -> Unit)?,
     showOptions: Boolean,
@@ -337,16 +332,6 @@ private fun PlaylistSongRow(
     var menuExpanded by remember { mutableStateOf(false) }
 
     ListItem(
-        modifier = Modifier
-            .clickable { onPlay() }
-            .padding(horizontal = 4.dp),
-        colors = ListItemDefaults.colors(
-            containerColor = if (isCurrent) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-            } else {
-                MaterialTheme.colorScheme.surface
-            }
-        ),
         headlineContent = { Text(song.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         supportingContent = { Text(song.artist, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         leadingContent = {
@@ -404,7 +389,8 @@ private fun PlaylistSongRow(
                     }
                 }
             }
-        }
+        },
+        modifier = Modifier.padding(horizontal = 4.dp)
     )
     HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
 }

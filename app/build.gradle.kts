@@ -68,13 +68,9 @@ dependencies {
     implementation(libs.androidx.media3.common)
     implementation(libs.androidx.media)
 
-    // ✅ NUEVO: Media3 Session — necesario para MediaLibraryService y Android Auto
-    implementation("androidx.media3:media3-session:1.5.1")
-
     // Room
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    implementation(libs.androidx.material3)
     ksp(libs.androidx.room.compiler)
 
     // Coil

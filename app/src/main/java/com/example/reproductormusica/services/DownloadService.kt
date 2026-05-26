@@ -12,11 +12,10 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.example.reproductormusica.R
 import com.example.reproductormusica.data.database.AppDatabase
-import com.example.reproductormusica.data.repository.DownloadRepository
+import com.example.reproductormusica.data.download.DownloadRepository
 import com.example.reproductormusica.models.PlaylistDownloadOutcome
 import com.example.reproductormusica.models.Song
 import com.example.reproductormusica.ui.MainActivity
-import com.example.reproductormusica.utils.DownloadErrorMessages
 import kotlinx.coroutines.*
 
 class DownloadService : Service() {
@@ -48,27 +47,12 @@ class DownloadService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        val playlist = intent.getBooleanExtra("playlist", false)
-        val userPlaylistName = intent.getStringExtra("user_playlist_name")
-        val playlistAsAlbum = intent.getBooleanExtra("playlist_as_album_metadata", false)
-        val singleAlbumHint = intent.getStringExtra("single_album_hint")
-        startDownload(
-            url = url,
-            playlist = playlist,
-            userPlaylistName = userPlaylistName,
-            playlistAsAlbumMetadata = playlistAsAlbum,
-            singleAlbumHint = singleAlbumHint
-        )
+        val playlist = intent?.getBooleanExtra("playlist", false) == true
+        startDownload(url, playlist)
         return START_STICKY
     }
 
-    private fun startDownload(
-        url: String,
-        playlist: Boolean,
-        userPlaylistName: String?,
-        playlistAsAlbumMetadata: Boolean,
-        singleAlbumHint: String?
-    ) {
+    private fun startDownload(url: String, playlist: Boolean) {
         startForeground(
             NOTIFICATION_ID_PROGRESS,
             createProgressNotification(
@@ -79,17 +63,11 @@ class DownloadService : Service() {
 
         serviceScope.launch {
             if (playlist) {
-                val result = repository.downloadPlaylistFromUrl(
-                    url = url,
-                    onProgress = { progress, line ->
+                val result = repository.downloadPlaylistFromUrl(url) { progress, line ->
                     val percent = (progress * 100).toInt().coerceIn(0, 100)
                     updateProgressNotification("Descargando playlist… $percent%", percent)
-                        onDownloadProgress?.invoke(progress, line)
-                    },
-                    userPlaylistName = userPlaylistName,
-                    playlistAsAlbumMetadata = playlistAsAlbumMetadata,
-                    playlistMetadataAlbumName = userPlaylistName
-                )
+                    onDownloadProgress?.invoke(progress, line)
+                }
                 result.onSuccess { outcome ->
                     stopForeground(Service.STOP_FOREGROUND_REMOVE)
                     val songs = outcome.songs
@@ -100,22 +78,19 @@ class DownloadService : Service() {
                     }
                     showFinishedNotification(subtitle)
                     onPlaylistDownloadComplete?.invoke(outcome)
+                    stopSelf()
                 }.onFailure { error ->
                     stopForeground(Service.STOP_FOREGROUND_REMOVE)
-                    val msg = DownloadErrorMessages.userMessage(this@DownloadService, error)
-                    showErrorNotification(msg)
-                    onDownloadError?.invoke(msg)
+                    showErrorNotification(error.message ?: "Error desconocido")
+                    onDownloadError?.invoke(error.message ?: "Error desconocido")
+                    stopSelf()
                 }
             } else {
-                val result = repository.downloadAudioFromUrl(
-                    url = url,
-                    onProgress = { progress, line ->
+                val result = repository.downloadAudioFromUrl(url) { progress, line ->
                     val percent = (progress * 100).toInt().coerceIn(0, 100)
                     updateProgressNotification("Descargando… $percent%", percent)
-                        onDownloadProgress?.invoke(progress, line)
-                    },
-                    metadataAlbumHint = singleAlbumHint
-                )
+                    onDownloadProgress?.invoke(progress, line)
+                }
 
                 result.onSuccess { song ->
                     stopForeground(Service.STOP_FOREGROUND_REMOVE)
@@ -123,11 +98,12 @@ class DownloadService : Service() {
                         getString(R.string.download_notification_single_subtitle, song.title)
                     )
                     onDownloadComplete?.invoke(song)
+                    stopSelf()
                 }.onFailure { error ->
                     stopForeground(Service.STOP_FOREGROUND_REMOVE)
-                    val msg = DownloadErrorMessages.userMessage(this@DownloadService, error)
-                    showErrorNotification(msg)
-                    onDownloadError?.invoke(msg)
+                    showErrorNotification(error.message ?: "Error desconocido")
+                    onDownloadError?.invoke(error.message ?: "Error desconocido")
+                    stopSelf()
                 }
             }
         }

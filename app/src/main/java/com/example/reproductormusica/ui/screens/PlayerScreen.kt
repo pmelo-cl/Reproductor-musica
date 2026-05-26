@@ -51,6 +51,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -82,8 +83,6 @@ fun PlayerScreen(
     val isPlaying by viewModel.isPlaying.collectAsState()
     val position by viewModel.playbackPosition.collectAsState()
     val duration by viewModel.duration.collectAsState()
-    val repeatMode by viewModel.repeatMode.collectAsState()
-    val shuffleEnabled by viewModel.shuffleEnabled.collectAsState()
     val themePrimary = MaterialTheme.colorScheme.primary
 
     var showOptionsMenu by remember { mutableStateOf(false) }
@@ -91,6 +90,8 @@ fun PlayerScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var editTitle by remember { mutableStateOf("") }
     var editArtist by remember { mutableStateOf("") }
+    var repeatMode by remember { mutableIntStateOf(Player.REPEAT_MODE_OFF) }
+    var shuffleEnabled by remember { mutableStateOf(false) }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
@@ -226,11 +227,10 @@ fun PlayerScreen(
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
-                val sliderEnd = duration.coerceAtLeast(1L).toFloat()
                 Slider(
-                    value = position.toFloat().coerceIn(0f, sliderEnd),
+                    value = position.toFloat(),
                     onValueChange = { viewModel.seekTo(it.toLong()) },
-                    valueRange = 0f..sliderEnd,
+                    valueRange = 0f..duration.toFloat(),
                     modifier = Modifier.fillMaxWidth()
                 )
                 Row(
@@ -248,7 +248,8 @@ fun PlayerScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = {
-                        viewModel.setShuffleMode(!shuffleEnabled)
+                        shuffleEnabled = !shuffleEnabled
+                        viewModel.setShuffleMode(shuffleEnabled)
                     }) {
                         Icon(
                             Icons.Default.Shuffle,
@@ -273,12 +274,12 @@ fun PlayerScreen(
                         Icon(Icons.Default.SkipNext, "Siguiente")
                     }
                     IconButton(onClick = {
-                        val next = when (repeatMode) {
+                        repeatMode = when (repeatMode) {
                             Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ONE
                             Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_ALL
                             else -> Player.REPEAT_MODE_OFF
                         }
-                        viewModel.setRepeatMode(next)
+                        viewModel.setRepeatMode(repeatMode)
                     }) {
                         Icon(
                             Icons.Default.Repeat,
@@ -297,7 +298,7 @@ fun PlayerScreen(
 
     if (showEditDialog) {
         AlertDialog(
-            onDismissRequest = { showEditDialog = false },
+            onDismissRequest = { },
             title = { Text("Editar informacion") },
             text = {
                 Column {
@@ -320,30 +321,28 @@ fun PlayerScreen(
                 TextButton(onClick = {
                     if (editTitle.isNotBlank()) {
                         viewModel.updateSongInfo(song, editTitle, editArtist)
-                        showEditDialog = false
                     }
                 }) { Text("Guardar") }
             },
             dismissButton = {
-                TextButton(onClick = { showEditDialog = false }) { Text("Cancelar") }
+                TextButton(onClick = { }) { Text("Cancelar") }
             }
         )
     }
 
     if (showDeleteDialog) {
         AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
+            onDismissRequest = { },
             title = { Text("Eliminar cancion") },
             text = { Text("Seguro que quieres eliminar '${song.title}'?") },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.deleteSong(song)
-                    showDeleteDialog = false
                     onBack()
                 }) { Text("Eliminar") }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) { Text("Cancelar") }
+                TextButton(onClick = { }) { Text("Cancelar") }
             }
         )
     }
